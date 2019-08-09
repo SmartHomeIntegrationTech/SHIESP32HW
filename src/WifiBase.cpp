@@ -13,6 +13,11 @@ PROGMEM const String RESET_SOURCE[] = {
     "RTCWDT_CPU_RESET", "EXT_CPU_RESET",    "RTCWDT_BROWN_OUT_RESET",
     "RTCWDT_RTC_RESET"};
 
+#ifndef BUILTIN_LED
+#warning "Did not define BUILTIN_LED"
+#define BUILTIN_LED -1
+#endif
+
 const char *ssid = "Elfenburg";
 const char *password = "fe-shnyed-olv-ek";
 
@@ -27,6 +32,19 @@ void IRAM_ATTR resetModule() {
   ets_printf("Watchdog bit, reboot\n");
   resetWithReason("Watchdog triggered", false);
   esp_restart();
+}
+
+void errLeds(void) {
+  // Set pin mode
+  if (BUILTIN_LED!=-1){
+    pinMode(BUILTIN_LED, OUTPUT);
+    delay(500);
+    digitalWrite(BUILTIN_LED, HIGH);
+    delay(500);
+    digitalWrite(BUILTIN_LED, LOW);
+  } else {
+    delay(1000);
+  }
 }
 
 void printError(HTTPClient &http, int httpCode) {
@@ -72,7 +90,7 @@ void setupWatchdog() {
 
 void resetWithReason(String reason, bool restart = true) {
   const size_t reasonSize=sizeof(config.resetReason) - 1;
-  strncpy(config.resetReason, reason.c_str, reasonSize);
+  strncpy(config.resetReason, reason.c_str(), reasonSize);
   config.resetReason[reasonSize] = 0;
   configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
   if (restart) {
@@ -95,6 +113,7 @@ void wifiDoSetup(String defaultName) {
 
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
   if (config.canary == 0xAFFEDEAD) {
+    WiFi.setHostname(config.name);
     if (!WiFi.config(config.local_IP, config.gateway, config.subnet, primaryDNS,
                      secondaryDNS)) {
       Serial.println("STA Failed to configure");
@@ -119,8 +138,9 @@ void wifiDoSetup(String defaultName) {
   feedWatchdog();
   Serial.println("");
   Serial.println("WiFi connected!");
-  strncpy(config.name, defaultName.c_str, sizeof(config.name) - 1);
-  config.name[sizeof(config.name) - 1] = 0;
+  const auto configNameSize=sizeof(config.name) - 1;
+  strncpy(config.name, defaultName.c_str(), configNameSize);
+  config.name[configNameSize] = 0;
   if (config.canary != 0xAFFEDEAD) {
     Serial.println("Storing config");
     config.local_IP = WiFi.localIP();

@@ -1,0 +1,17 @@
+{
+    "name": "WifiBase",
+    "description": "All base code for my SmartHome",
+    "keywords": ["SmartHome"],
+    "authors":
+    [
+      {
+        "name": "Karsten Becker",
+        "email": "kb@karsten-becker.de",
+        "url": "http://karsten-becker.de",
+        "maintainer": true
+      }
+    ],
+    "version": "0.0.1",
+    "frameworks": "arduino",
+    "platforms": "*"
+  }

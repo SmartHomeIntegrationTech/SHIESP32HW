@@ -18,6 +18,7 @@ void uploadInfo(String prefix, String item, String value);
 void uploadInfo(String level, String item, float value);
 bool wifiIsConntected();
 void wifiDoSetup(String defaultName);
+void errLeds(void);
 
 #define WIFIBASE_H
 #endif
