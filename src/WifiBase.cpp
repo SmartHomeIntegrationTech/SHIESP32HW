@@ -1,5 +1,7 @@
 #include "WifiBase.h"
 #include <Arduino.h>
+#include <AsyncUDP.h>
+#include <CRC32.h>
 #include <HTTPClient.h>
 #include <Preferences.h>
 #include <WiFi.h>
@@ -21,6 +23,8 @@ PROGMEM const String RESET_SOURCE[] = {
 const char *ssid = "Elfenburg";
 const char *password = "fe-shnyed-olv-ek";
 
+AsyncUDP udp;
+
 const char *CONFIG = "wifiConfig";
 config_t config;
 Preferences configPrefs;
@@ -36,7 +40,7 @@ void IRAM_ATTR resetModule() {
 
 void errLeds(void) {
   // Set pin mode
-  if (BUILTIN_LED!=-1){
+  if (BUILTIN_LED != -1) {
     pinMode(BUILTIN_LED, OUTPUT);
     delay(500);
     digitalWrite(BUILTIN_LED, HIGH);
@@ -64,8 +68,11 @@ void printError(HTTPClient &http, int httpCode) {
   }
 }
 
-void uploadInfo(String item, String value) {
-  const auto name = String(config.name);
+void uploadInfo(String name, String item, float value) {
+  uploadInfo(name, item, String(value, 1));
+}
+
+void uploadInfo(String name, String item, String value) {
   Serial.print(name + " " + item + " " + value);
   HTTPClient http;
   http.begin("http://192.168.188.202:8080/rest/items/esp32" + name + item +
@@ -77,8 +84,12 @@ void uploadInfo(String item, String value) {
   http.end();
 }
 
+void uploadInfo(String item, String value) {
+  uploadInfo(String(config.name), item, value);
+}
+
 void uploadInfo(String item, float value) {
-  uploadInfo(item, String(value, 1));
+  uploadInfo(String(config.name), item, String(value, 1));
 }
 
 void setupWatchdog() {
@@ -89,7 +100,7 @@ void setupWatchdog() {
 }
 
 void resetWithReason(String reason, bool restart = true) {
-  const size_t reasonSize=sizeof(config.resetReason) - 1;
+  const size_t reasonSize = sizeof(config.resetReason) - 1;
   strncpy(config.resetReason, reason.c_str(), reasonSize);
   config.resetReason[reasonSize] = 0;
   configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
@@ -107,12 +118,11 @@ void wifiDoSetup(String defaultName) {
   feedWatchdog();
 
   Serial.begin(115200);
+
   configPrefs.begin(CONFIG);
-
-  // Print the header
-
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
-  if (config.canary == 0xAFFEDEAD) {
+  auto chkSum = CRC32::calculate(&config, sizeof(config_t));
+  if (config.canary == chkSum) {
     WiFi.setHostname(config.name);
     if (!WiFi.config(config.local_IP, config.gateway, config.subnet, primaryDNS,
                      secondaryDNS)) {
@@ -120,8 +130,7 @@ void wifiDoSetup(String defaultName) {
     }
   }
 
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
+  Serial.print("Connecting to " + String(ssid));
 
   feedWatchdog();
   WiFi.begin(ssid, password);
@@ -136,25 +145,25 @@ void wifiDoSetup(String defaultName) {
     connectCount++;
   }
   feedWatchdog();
-  Serial.println("");
   Serial.println("WiFi connected!");
-  const auto configNameSize=sizeof(config.name) - 1;
+  const auto configNameSize = sizeof(config.name) - 1;
   strncpy(config.name, defaultName.c_str(), configNameSize);
   config.name[configNameSize] = 0;
-  if (config.canary != 0xAFFEDEAD) {
+  if (config.canary != chkSum) {
     Serial.println("Storing config");
     config.local_IP = WiFi.localIP();
     config.gateway = WiFi.gatewayIP();
     config.subnet = WiFi.subnetMask();
     // config.name=WiFi.getHostname(); Doesn't work due to a Bug :(
     resetWithReason("Fresh-reset", false);
-    config.canary = 0xAFFEDEAD;
+    config.canary = CRC32::calculate(&config, sizeof(config_t));
+    ;
     configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
-    Serial.println("IP address: "+config.local_IP);
-    Serial.println("ESP Mac Address: "+WiFi.macAddress());
-    Serial.println("Subnet Mask: "+config.subnet);
-    Serial.println("Gateway IP: "+config.gateway);
-    Serial.println("Name: "+String(config.name));
+    Serial.println("IP address: " + config.local_IP);
+    Serial.println("ESP Mac Address: " + WiFi.macAddress());
+    Serial.println("Subnet Mask: " + config.subnet);
+    Serial.println("Gateway IP: " + config.gateway);
+    Serial.println("Name: " + String(config.name));
   } else {
     Serial.println("Config read:" + String(config.name));
   }
@@ -162,6 +171,17 @@ void wifiDoSetup(String defaultName) {
              "STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
                  RESET_SOURCE[rtc_get_reset_reason(1)] + " " +
                  String(config.resetReason));
+  feedWatchdog();
+  if (udp.listen(2323)) {
+    udp.onPacket([](AsyncUDPPacket packet) {
+      const char *data = (const char *)(packet.data());
+      if (strncmp("UPDATE", data, 6) == 0) {
+      }
+      if (strncmp("RESET", data, 5) == 0) {
+        resetWithReason("UDP reset request");
+      }
+    });
+  }
 }
 
 bool wifiIsConntected() {
