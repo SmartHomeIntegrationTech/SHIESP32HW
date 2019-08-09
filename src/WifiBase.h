@@ -3,9 +3,9 @@
 
 typedef struct {
   uint32_t canary;
-  IPAddress local_IP;
-  IPAddress gateway;
-  IPAddress subnet;
+  uint32_t local_IP;
+  uint32_t gateway;
+  uint32_t subnet;
   char name[20];
   char resetReason[40];
 } config_t;

@@ -1,7 +1,6 @@
 #include "WifiBase.h"
 #include <Arduino.h>
 #include <AsyncUDP.h>
-#include <CRC32.h>
 #include <HTTPClient.h>
 #include <Preferences.h>
 #include <WiFi.h>
@@ -26,6 +25,7 @@ const char *password = "fe-shnyed-olv-ek";
 AsyncUDP udp;
 
 const char *CONFIG = "wifiConfig";
+const uint32_t CONST_MARKER = 0xAFFEDEAD;
 config_t config;
 Preferences configPrefs;
 
@@ -100,15 +100,24 @@ void setupWatchdog() {
 }
 
 void resetWithReason(String reason, bool restart = true) {
-  const size_t reasonSize = sizeof(config.resetReason) - 1;
-  strncpy(config.resetReason, reason.c_str(), reasonSize);
-  config.resetReason[reasonSize] = 0;
+  for (int i = 0; i < sizeof(config.resetReason); i++)
+    config.resetReason[i] = 0;
+  strcpy(config.resetReason, reason.c_str());
   configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
   if (restart) {
     Serial.println("Restarting:" + reason);
     delay(100);
     ESP.restart();
   }
+}
+
+void printConfig() {
+  Serial.printf("IP address:  %08X\n", config.local_IP);
+  Serial.printf("Subnet Mask: %08X\n", config.subnet);
+  Serial.printf("Gateway IP:  %08X\n", config.gateway);
+  Serial.printf("Canary:      %08X\n", config.canary);
+  Serial.printf("Name:        %-20s\n", config.name);
+  Serial.printf("Reset reason:%-40s\n", config.resetReason);
 }
 
 void wifiDoSetup(String defaultName) {
@@ -121,13 +130,15 @@ void wifiDoSetup(String defaultName) {
 
   configPrefs.begin(CONFIG);
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
-  auto chkSum = CRC32::calculate(&config, sizeof(config_t));
-  if (config.canary == chkSum) {
+  if (config.canary == CONST_MARKER) {
+    Serial.println("Restoring config from memory");
     WiFi.setHostname(config.name);
     if (!WiFi.config(config.local_IP, config.gateway, config.subnet, primaryDNS,
                      secondaryDNS)) {
       Serial.println("STA Failed to configure");
     }
+  } else {
+    Serial.printf("Canary mismatch, stored: %08X\n", config.canary);
   }
 
   Serial.print("Connecting to " + String(ssid));
@@ -146,28 +157,22 @@ void wifiDoSetup(String defaultName) {
   }
   feedWatchdog();
   Serial.println("WiFi connected!");
-  const auto configNameSize = sizeof(config.name) - 1;
-  strncpy(config.name, defaultName.c_str(), configNameSize);
-  config.name[configNameSize] = 0;
-  if (config.canary != chkSum) {
+  for (int i = 0; i < sizeof(config.name); i++)
+    config.name[i] = 0;
+  strcpy(config.name, defaultName.c_str());
+  if (config.canary != CONST_MARKER) {
     Serial.println("Storing config");
     config.local_IP = WiFi.localIP();
     config.gateway = WiFi.gatewayIP();
     config.subnet = WiFi.subnetMask();
     // config.name=WiFi.getHostname(); Doesn't work due to a Bug :(
     resetWithReason("Fresh-reset", false);
-    config.canary = CRC32::calculate(&config, sizeof(config_t));
-    ;
+    config.canary = CONST_MARKER;
     configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
-    Serial.println("IP address: " + config.local_IP);
     Serial.println("ESP Mac Address: " + WiFi.macAddress());
-    Serial.println("Subnet Mask: " + config.subnet);
-    Serial.println("Gateway IP: " + config.gateway);
-    Serial.println("Name: " + String(config.name));
-  } else {
-    Serial.println("Config read:" + String(config.name));
+    printConfig();
   }
-  uploadInfo(config.name, "status",
+  uploadInfo(config.name, "Status",
              "STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
                  RESET_SOURCE[rtc_get_reset_reason(1)] + " " +
                  String(config.resetReason));
