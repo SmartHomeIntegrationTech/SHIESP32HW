@@ -23,6 +23,15 @@ const char *ssid = "Elfenburg";
 const char *password = "fe-shnyed-olv-ek";
 
 AsyncUDP udp;
+#ifndef VER_MAJ
+#error "Major version undefined"
+#endif
+#ifndef VER_MIN 
+#error "Minor version undefined"
+#endif
+#ifndef VER_PAT
+#error "Patch version undefined"
+#endif
 
 const char *CONFIG = "wifiConfig";
 const uint32_t CONST_MARKER = 0xAFFEDEAD;
@@ -181,9 +190,14 @@ void wifiDoSetup(String defaultName) {
     udp.onPacket([](AsyncUDPPacket packet) {
       const char *data = (const char *)(packet.data());
       if (strncmp("UPDATE", data, 6) == 0) {
+        packet.print("OK");
       }
       if (strncmp("RESET", data, 5) == 0) {
+        packet.print("OK");
         resetWithReason("UDP reset request");
+      }
+      if (strncmp("VERSION", data, 7) == 0) {
+        packet.printf("%d.%d.%d", VER_MAJ, VER_MIN, VER_PAT);
       }
     });
   }
