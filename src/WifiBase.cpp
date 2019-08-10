@@ -3,6 +3,7 @@
 #include <AsyncUDP.h>
 #include <HTTPClient.h>
 #include <Preferences.h>
+#include <Update.h>
 #include <WiFi.h>
 #include <rom/rtc.h>
 
@@ -111,6 +112,8 @@ void setupWatchdog() {
   timerAlarmWrite(timer, wdtTimeout * 1000, false); // set time in us
   timerAlarmEnable(timer);
 }
+
+void disableWatchdog() { timerEnd(timer); }
 
 void resetWithReason(String reason, bool restart = true) {
   reason.toCharArray(config.resetReason, sizeof(config.resetReason));
@@ -252,6 +255,48 @@ void wifiDoSetup(String defaultName) {
   }
 }
 
+void updateProgress(size_t a, size_t b) {
+  udp.printf("OK UPDATE:%s %u/%u", config.name, a, b);
+  feedWatchdog();
+}
+
+void startUpdate() {
+  HTTPClient http;
+  http.begin("http://192.168.188.202/esp/firmware/" + String(config.name) +
+             ".bin");
+  http.setConnectTimeout(100);
+  http.setTimeout(1000);
+  int httpCode = http.GET();
+  if (httpCode == 200) {
+    udp.printf("OK UPDATE:%s Starting", config.name);
+    int size = http.getSize();
+    if (size < 0) {
+      udp.printf("ERR UPDATE:%s Abort, no size", config.name);
+      return;
+    }
+    if (!Update.begin(size)) {
+      udp.printf("ERR UPDATE:%s Abort, not enough space", config.name);
+      return;
+    }
+    Update.onProgress(updateProgress);
+    size_t written = Update.writeStream(http.getStream());
+    if (written == size) {
+      udp.printf("OK UPDATE:%s Finishing", config.name);
+      if (!Update.end()) {
+        udp.printf("ERR UPDATE:%s Abort finish failed: %u", config.name,
+                   Update.getError());
+      } else {
+        udp.printf("OK UPDATE:%s Finished", config.name);
+      }
+    } else {
+      udp.printf("ERR UPDATE:%s Abort, written:%d size:%d", config.name,
+                 written, size);
+    }
+    resetWithReason("Firmware updated");
+  }
+  http.end();
+}
+
 bool wifiIsConntected() {
   static int retryCount = 0;
   while (WiFi.status() != WL_CONNECTED) {
@@ -266,6 +311,9 @@ bool wifiIsConntected() {
     retryCount++;
   }
   retryCount = 0;
+  if (doUpdate) {
+    startUpdate();
+  }
   return true;
 }
 
