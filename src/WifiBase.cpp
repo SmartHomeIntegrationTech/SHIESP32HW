@@ -23,7 +23,8 @@ PROGMEM const String RESET_SOURCE[] = {
 const char *ssid = "Elfenburg";
 const char *password = "fe-shnyed-olv-ek";
 
-AsyncUDP udp;
+AsyncUDP udpMulticast, udpDirect;
+
 #ifndef VER_MAJ
 #error "Major version undefined"
 #endif
@@ -36,6 +37,9 @@ AsyncUDP udp;
 const uint8_t MAJOR_VERSION = VER_MAJ;
 const uint8_t MINOR_VERSION = VER_MIN;
 const uint8_t PATCH_VERSION = VER_PAT;
+const String VERSION = String(MAJOR_VERSION, 10) + "." +
+                       String(MINOR_VERSION, 10) + "." +
+                       String(PATCH_VERSION, 10);
 
 const char *CONFIG = "wifiConfig";
 const uint32_t CONST_MARKER = 0xAFFEDEAD;
@@ -155,6 +159,44 @@ bool getHostName() {
   return false;
 }
 
+void handleUDPPacket(AsyncUDPPacket packet) {
+  const char *data = (const char *)(packet.data());
+  if (strncmp("UPDATE", data, 6) == 0) {
+    Serial.println("UPDATE called");
+    packet.printf("OK UPDATE:%s", config.name);
+    doUpdate = true;
+    return;
+  }
+  if (strncmp("RESET", data, 5) == 0) {
+    Serial.println("RESET called");
+    packet.printf("OK RESET:%s", config.name);
+    resetWithReason("UDP RESET request");
+    return;
+  }
+  if (strncmp("RECONF", data, 6) == 0) {
+    Serial.println("RECONF called");
+    config.canary = 0xDEADBEEF;
+    configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
+    packet.printf("OK RECONF:%s", config.name);
+    resetWithReason("UDP RECONF request");
+    return;
+  }
+  if (strncmp("INFO", data, 4) == 0) {
+    Serial.println("INFO called");
+    packet.printf("OK INFO:%s\n%s\n%s\n%lu\n%s:%s\n%s\n%s\n", config.name,
+                  VERSION.c_str(), config.resetReason, millis(),
+                  RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
+                  RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
+                  WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str());
+    return;
+  }
+  if (strncmp("VERSION", data, 7) == 0) {
+    Serial.println("VERSION called");
+    packet.printf("OK VERSION:%s %s", config.name, VERSION.c_str());
+    return;
+  }
+}
+
 void wifiDoSetup(String defaultName) {
   IPAddress primaryDNS(192, 168, 188, 202); // optional
   IPAddress secondaryDNS(192, 168, 188, 1); // optional
@@ -212,52 +254,32 @@ void wifiDoSetup(String defaultName) {
                  RESET_SOURCE[rtc_get_reset_reason(1)] + " " +
                  String(config.resetReason));
   feedWatchdog();
-  if (udp.listenMulticast(IPAddress(239, 1, 23, 42), 2323)) {
-    udp.onPacket([](AsyncUDPPacket packet) {
-      const char *data = (const char *)(packet.data());
-      if (strncmp("UPDATE", data, 6) == 0) {
-        Serial.println("UPDATE called");
-        packet.printf("OK UPDATE:%s", config.name);
-        doUpdate = true;
-        return;
-      }
-      if (strncmp("RESET", data, 5) == 0) {
-        Serial.println("RESET called");
-        packet.printf("OK RESET:%s", config.name);
-        resetWithReason("UDP RESET request");
-        return;
-      }
-      if (strncmp("RECONF", data, 6) == 0) {
-        Serial.println("RECONF called");
-        config.canary = 0xDEADBEEF;
-        configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
-        packet.printf("OK RECONF:%s", config.name);
-        resetWithReason("UDP RECONF request");
-        return;
-      }
-      if (strncmp("INFO", data, 4) == 0) {
-        Serial.println("INFO called");
-        packet.printf(
-            "OK INFO:%s\n%d.%d.%d\n%s\n%lu\n%s:%s\n%s\n%s\n", config.name,
-            MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION, config.resetReason,
-            millis(), RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
-            RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
-            WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str());
-        return;
-      }
-      if (strncmp("VERSION", data, 7) == 0) {
-        Serial.println("VERSION called");
-        packet.printf("OK VERSION:%s %d.%d.%d", config.name, VER_MAJ, VER_MIN,
-                      VER_PAT);
-        return;
-      }
-    });
+  if (udpMulticast.listenMulticast(IPAddress(239, 1, 23, 42), 2323)) {
+    udpMulticast.onPacket(handleUDPPacket);
+  }
+  if (udpDirect.listen(2323)) {
+    udpDirect.onPacket(handleUDPPacket);
   }
 }
 
 void updateProgress(size_t a, size_t b) {
-  udp.printf("OK UPDATE:%s %u/%u", config.name, a, b);
+  udpMulticast.printf("OK UPDATE:%s %u/%u", config.name, a, b);
   feedWatchdog();
+}
+
+bool isUpdateAvailable() {
+  HTTPClient http;
+  http.begin("http://192.168.188.202/esp/firmware/" + String(config.name) +
+             ".version");
+  http.setConnectTimeout(100);
+  http.setTimeout(1000);
+  int httpCode = http.GET();
+  if (httpCode == 200) {
+    String remoteVersion = http.getString();
+    Serial.println("Remote version is:" + remoteVersion);
+    return VERSION.compareTo(remoteVersion) < 0;
+  }
+  return false;
 }
 
 void startUpdate() {
@@ -268,30 +290,32 @@ void startUpdate() {
   http.setTimeout(1000);
   int httpCode = http.GET();
   if (httpCode == 200) {
-    udp.printf("OK UPDATE:%s Starting", config.name);
+    udpMulticast.printf("OK UPDATE:%s Starting", config.name);
     int size = http.getSize();
     if (size < 0) {
-      udp.printf("ERR UPDATE:%s Abort, no size", config.name);
+      udpMulticast.printf("ERR UPDATE:%s Abort, no size", config.name);
       return;
     }
     if (!Update.begin(size)) {
-      udp.printf("ERR UPDATE:%s Abort, not enough space", config.name);
+      udpMulticast.printf("ERR UPDATE:%s Abort, not enough space", config.name);
       return;
     }
     Update.onProgress(updateProgress);
     size_t written = Update.writeStream(http.getStream());
     if (written == size) {
-      udp.printf("OK UPDATE:%s Finishing", config.name);
+      udpMulticast.printf("OK UPDATE:%s Finishing", config.name);
       if (!Update.end()) {
-        udp.printf("ERR UPDATE:%s Abort finish failed: %u", config.name,
-                   Update.getError());
+        udpMulticast.printf("ERR UPDATE:%s Abort finish failed: %u",
+                            config.name, Update.getError());
       } else {
-        udp.printf("OK UPDATE:%s Finished", config.name);
+        udpMulticast.printf("OK UPDATE:%s Finished", config.name);
       }
     } else {
-      udp.printf("ERR UPDATE:%s Abort, written:%d size:%d", config.name,
-                 written, size);
+      udpMulticast.printf("ERR UPDATE:%s Abort, written:%d size:%d",
+                          config.name, written, size);
     }
+    config.canary = 0xDEADBEEF;
+    configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
     resetWithReason("Firmware updated");
   }
   http.end();
@@ -312,7 +336,13 @@ bool wifiIsConntected() {
   }
   retryCount = 0;
   if (doUpdate) {
-    startUpdate();
+    if (isUpdateAvailable()) {
+      startUpdate();
+    } else {
+      Serial.println("No newer version available");
+      udpMulticast.printf("OK UPDATE:%s No update available", config.name);
+    }
+    doUpdate = false;
   }
   return true;
 }
