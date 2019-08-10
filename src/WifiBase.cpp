@@ -26,17 +26,21 @@ AsyncUDP udp;
 #ifndef VER_MAJ
 #error "Major version undefined"
 #endif
-#ifndef VER_MIN 
+#ifndef VER_MIN
 #error "Minor version undefined"
 #endif
 #ifndef VER_PAT
 #error "Patch version undefined"
 #endif
+const uint8_t MAJOR_VERSION = VER_MAJ;
+const uint8_t MINOR_VERSION = VER_MIN;
+const uint8_t PATCH_VERSION = VER_PAT;
 
 const char *CONFIG = "wifiConfig";
 const uint32_t CONST_MARKER = 0xAFFEDEAD;
 config_t config;
 Preferences configPrefs;
+bool doUpdate = false;
 
 const int wdtTimeout = 15000; // time in ms to trigger the watchdog
 hw_timer_t *timer = NULL;
@@ -109,9 +113,7 @@ void setupWatchdog() {
 }
 
 void resetWithReason(String reason, bool restart = true) {
-  for (int i = 0; i < sizeof(config.resetReason); i++)
-    config.resetReason[i] = 0;
-  strcpy(config.resetReason, reason.c_str());
+  reason.toCharArray(config.resetReason, sizeof(config.resetReason));
   configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
   if (restart) {
     Serial.println("Restarting:" + reason);
@@ -125,8 +127,29 @@ void printConfig() {
   Serial.printf("Subnet Mask: %08X\n", config.subnet);
   Serial.printf("Gateway IP:  %08X\n", config.gateway);
   Serial.printf("Canary:      %08X\n", config.canary);
-  Serial.printf("Name:        %-20s\n", config.name);
+  Serial.printf("Name:        %-40s\n", config.name);
   Serial.printf("Reset reason:%-40s\n", config.resetReason);
+}
+
+bool getHostName() {
+  HTTPClient http;
+  String mac = WiFi.macAddress();
+  mac.replace(':', '_');
+  http.begin("http://192.168.188.202/esp/" + mac);
+  http.setConnectTimeout(100);
+  http.setTimeout(1000);
+  int httpCode = http.GET();
+  if (httpCode == 200) {
+    String newName = http.getString();
+    newName.replace('\n', '\0');
+    newName.trim();
+    if (newName.length() == 0)
+      return false;
+    newName.toCharArray(config.name, sizeof(config.name));
+    Serial.printf("Recevied new Name:%s : %s\n", newName.c_str(), config.name);
+    return true;
+  }
+  return false;
 }
 
 void wifiDoSetup(String defaultName) {
@@ -141,6 +164,7 @@ void wifiDoSetup(String defaultName) {
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
   if (config.canary == CONST_MARKER) {
     Serial.println("Restoring config from memory");
+    printConfig();
     WiFi.setHostname(config.name);
     if (!WiFi.config(config.local_IP, config.gateway, config.subnet, primaryDNS,
                      secondaryDNS)) {
@@ -148,6 +172,7 @@ void wifiDoSetup(String defaultName) {
     }
   } else {
     Serial.printf("Canary mismatch, stored: %08X\n", config.canary);
+    defaultName.toCharArray(config.name, sizeof(config.name));
   }
 
   Serial.print("Connecting to " + String(ssid));
@@ -166,15 +191,13 @@ void wifiDoSetup(String defaultName) {
   }
   feedWatchdog();
   Serial.println("WiFi connected!");
-  for (int i = 0; i < sizeof(config.name); i++)
-    config.name[i] = 0;
-  strcpy(config.name, defaultName.c_str());
-  if (config.canary != CONST_MARKER) {
+  if (config.canary != CONST_MARKER && getHostName()) {
     Serial.println("Storing config");
     config.local_IP = WiFi.localIP();
     config.gateway = WiFi.gatewayIP();
     config.subnet = WiFi.subnetMask();
-    // config.name=WiFi.getHostname(); Doesn't work due to a Bug :(
+    // config.name is set by getHostName
+    WiFi.setHostname(config.name);
     resetWithReason("Fresh-reset", false);
     config.canary = CONST_MARKER;
     configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
@@ -186,18 +209,44 @@ void wifiDoSetup(String defaultName) {
                  RESET_SOURCE[rtc_get_reset_reason(1)] + " " +
                  String(config.resetReason));
   feedWatchdog();
-  if (udp.listen(2323)) {
+  if (udp.listenMulticast(IPAddress(239, 1, 23, 42), 2323)) {
     udp.onPacket([](AsyncUDPPacket packet) {
       const char *data = (const char *)(packet.data());
       if (strncmp("UPDATE", data, 6) == 0) {
-        packet.print("OK");
+        Serial.println("UPDATE called");
+        packet.printf("OK UPDATE:%s", config.name);
+        doUpdate = true;
+        return;
       }
       if (strncmp("RESET", data, 5) == 0) {
-        packet.print("OK");
-        resetWithReason("UDP reset request");
+        Serial.println("RESET called");
+        packet.printf("OK RESET:%s", config.name);
+        resetWithReason("UDP RESET request");
+        return;
+      }
+      if (strncmp("RECONF", data, 6) == 0) {
+        Serial.println("RECONF called");
+        config.canary = 0xDEADBEEF;
+        configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
+        packet.printf("OK RECONF:%s", config.name);
+        resetWithReason("UDP RECONF request");
+        return;
+      }
+      if (strncmp("INFO", data, 4) == 0) {
+        Serial.println("INFO called");
+        packet.printf(
+            "OK INFO:%s\n%d.%d.%d\n%s\n%lu\n%s:%s\n%s\n%s\n", config.name,
+            MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION, config.resetReason,
+            millis(), RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
+            RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
+            WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str());
+        return;
       }
       if (strncmp("VERSION", data, 7) == 0) {
-        packet.printf("%d.%d.%d", VER_MAJ, VER_MIN, VER_PAT);
+        Serial.println("VERSION called");
+        packet.printf("OK VERSION:%s %d.%d.%d", config.name, VER_MAJ, VER_MIN,
+                      VER_PAT);
+        return;
       }
     });
   }
