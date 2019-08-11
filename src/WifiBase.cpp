@@ -257,7 +257,7 @@ void wifiDoSetup(String defaultName) {
   if (udpMulticast.listenMulticast(IPAddress(239, 1, 23, 42), 2323)) {
     udpMulticast.onPacket(handleUDPPacket);
   }
-  if (udpDirect.listen(2323)) {
+  if (udpDirect.listen(2324)) {
     udpDirect.onPacket(handleUDPPacket);
   }
 }
