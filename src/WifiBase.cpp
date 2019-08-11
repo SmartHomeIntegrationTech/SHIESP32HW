@@ -23,7 +23,11 @@ PROGMEM const String RESET_SOURCE[] = {
 const char *ssid = "Elfenburg";
 const char *password = "fe-shnyed-olv-ek";
 
-AsyncUDP udpMulticast, udpDirect;
+AsyncUDP udpMulticast;
+const int CONNECT_TIMEOUT = 500;
+const int DATA_TIMEOUT = 1000;
+const String STATUS_ITEM = "Status";
+int errorCount = 0, httpErrorCount = 0;
 
 #ifndef VER_MAJ
 #error "Major version undefined"
@@ -72,6 +76,7 @@ void errLeds(void) {
 void printError(HTTPClient &http, int httpCode) {
   // httpCode will be negative on error
   if (httpCode > 0) {
+    httpErrorCount++;
     // HTTP header has been send and Server response header has been handled
     Serial.printf("[HTTP] PUT... code: %d\n", httpCode);
 
@@ -81,6 +86,7 @@ void printError(HTTPClient &http, int httpCode) {
       Serial.println(payload);
     }
   } else {
+    errorCount++;
     Serial.printf("[HTTP] PUT... failed, error: %s\n",
                   http.errorToString(httpCode).c_str());
   }
@@ -92,14 +98,25 @@ void uploadInfo(String name, String item, float value) {
 
 void uploadInfo(String name, String item, String value) {
   Serial.print(name + " " + item + " " + value);
-  HTTPClient http;
-  http.begin("http://192.168.188.202:8080/rest/items/esp32" + name + item +
-             "/state");
-  http.setConnectTimeout(100);
-  http.setTimeout(1000);
-  int httpCode = http.PUT(value);
-  printError(http, httpCode);
-  http.end();
+  bool tryHard = false;
+  if (item == STATUS_ITEM && value != "OK") {
+    tryHard = true;
+  }
+  int retryCount = 0;
+  do {
+    HTTPClient http;
+    http.begin("http://192.168.188.202:8080/rest/items/esp32" + name + item +
+               "/state");
+    http.setConnectTimeout(CONNECT_TIMEOUT);
+    http.setTimeout(DATA_TIMEOUT);
+    int httpCode = http.PUT(value);
+    printError(http, httpCode);
+    http.end();
+    if (httpCode == 202)
+      return; // Either return early or try until success
+    retryCount++;
+    feedWatchdog();
+  } while (tryHard && retryCount < 15);
 }
 
 void uploadInfo(String item, String value) {
@@ -143,8 +160,8 @@ bool getHostName() {
   String mac = WiFi.macAddress();
   mac.replace(':', '_');
   http.begin("http://192.168.188.202/esp/" + mac);
-  http.setConnectTimeout(100);
-  http.setTimeout(1000);
+  http.setConnectTimeout(CONNECT_TIMEOUT);
+  http.setTimeout(DATA_TIMEOUT);
   int httpCode = http.GET();
   if (httpCode == 200) {
     String newName = http.getString();
@@ -170,6 +187,7 @@ void handleUDPPacket(AsyncUDPPacket packet) {
   if (strncmp("RESET", data, 5) == 0) {
     Serial.println("RESET called");
     packet.printf("OK RESET:%s", config.name);
+    packet.flush();
     resetWithReason("UDP RESET request");
     return;
   }
@@ -178,16 +196,18 @@ void handleUDPPacket(AsyncUDPPacket packet) {
     config.canary = 0xDEADBEEF;
     configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
     packet.printf("OK RECONF:%s", config.name);
+    packet.flush();
     resetWithReason("UDP RECONF request");
     return;
   }
   if (strncmp("INFO", data, 4) == 0) {
     Serial.println("INFO called");
-    packet.printf("OK INFO:%s\n%s\n%s\n%lu\n%s:%s\n%s\n%s\n", config.name,
-                  VERSION.c_str(), config.resetReason, millis(),
+    packet.printf("OK INFO:%s\n%s\n%s\n%lu\n%s:%s\n%s\n%s\n%d\n%d\n",
+                  config.name, VERSION.c_str(), config.resetReason, millis(),
                   RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
                   RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
-                  WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str());
+                  WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str(),
+                  errorCount, httpErrorCount);
     return;
   }
   if (strncmp("VERSION", data, 7) == 0) {
@@ -249,7 +269,7 @@ void wifiDoSetup(String defaultName) {
     Serial.println("ESP Mac Address: " + WiFi.macAddress());
     printConfig();
   }
-  uploadInfo(config.name, "Status",
+  uploadInfo(config.name, STATUS_ITEM,
              "STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
                  RESET_SOURCE[rtc_get_reset_reason(1)] + " " +
                  String(config.resetReason));
@@ -268,8 +288,8 @@ bool isUpdateAvailable() {
   HTTPClient http;
   http.begin("http://192.168.188.202/esp/firmware/" + String(config.name) +
              ".version");
-  http.setConnectTimeout(100);
-  http.setTimeout(1000);
+  http.setConnectTimeout(CONNECT_TIMEOUT);
+  http.setTimeout(DATA_TIMEOUT);
   int httpCode = http.GET();
   if (httpCode == 200) {
     String remoteVersion = http.getString();
@@ -283,8 +303,8 @@ void startUpdate() {
   HTTPClient http;
   http.begin("http://192.168.188.202/esp/firmware/" + String(config.name) +
              ".bin");
-  http.setConnectTimeout(100);
-  http.setTimeout(1000);
+  http.setConnectTimeout(CONNECT_TIMEOUT);
+  http.setTimeout(DATA_TIMEOUT);
   int httpCode = http.GET();
   if (httpCode == 200) {
     udpMulticast.printf("OK UPDATE:%s Starting", config.name);
@@ -328,7 +348,7 @@ bool wifiIsConntected() {
     WiFi.mode(WIFI_OFF);
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
-    delay(100);
+    delay(500);
     retryCount++;
   }
   retryCount = 0;
