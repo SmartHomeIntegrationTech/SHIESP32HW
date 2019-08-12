@@ -27,7 +27,7 @@ AsyncUDP udpMulticast;
 const int CONNECT_TIMEOUT = 500;
 const int DATA_TIMEOUT = 1000;
 const String STATUS_ITEM = "Status";
-int errorCount = 0, httpErrorCount = 0;
+int errorCount = 0, httpErrorCount = 0, httpCount=0;
 
 #ifndef VER_MAJ
 #error "Major version undefined"
@@ -76,7 +76,9 @@ void errLeds(void) {
 void printError(HTTPClient &http, int httpCode) {
   // httpCode will be negative on error
   if (httpCode > 0) {
-    httpErrorCount++;
+    if (httpCode<200||httpCode>299)
+      httpErrorCount++;
+    httpCount++;
     // HTTP header has been send and Server response header has been handled
     Serial.printf("[HTTP] PUT... code: %d\n", httpCode);
 
@@ -202,12 +204,12 @@ void handleUDPPacket(AsyncUDPPacket packet) {
   }
   if (strncmp("INFO", data, 4) == 0) {
     Serial.println("INFO called");
-    packet.printf("OK INFO:%s\n%s\n%s\n%lu\n%s:%s\n%s\n%s\n%d\n%d\n",
+    packet.printf("OK INFO:%s\n%s\n%s\n%lu\n%s:%s\n%s\n%s\n%d\n%d\n%d\n",
                   config.name, VERSION.c_str(), config.resetReason, millis(),
                   RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
                   RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
                   WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str(),
-                  errorCount, httpErrorCount);
+                  httpCount, errorCount, httpErrorCount);
     return;
   }
   if (strncmp("VERSION", data, 7) == 0) {
