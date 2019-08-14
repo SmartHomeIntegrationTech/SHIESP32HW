@@ -1,5 +1,6 @@
 #ifndef WIFIBASE_H
 #include <Arduino.h>
+#include <AsyncUDP.h>
 
 typedef struct {
   uint32_t canary;
@@ -13,6 +14,7 @@ extern config_t config;
 
 void setupWatchdog();
 void feedWatchdog();
+void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
 void resetWithReason(String reason, bool restart);
 void uploadInfo(String prefix, String item, String value);
 void uploadInfo(String prefix, String item, float value);

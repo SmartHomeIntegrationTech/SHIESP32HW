@@ -5,6 +5,7 @@
 #include <Preferences.h>
 #include <Update.h>
 #include <WiFi.h>
+#include <map>
 #include <rom/rtc.h>
 
 PROGMEM const String RESET_SOURCE[] = {
@@ -27,7 +28,7 @@ AsyncUDP udpMulticast;
 const int CONNECT_TIMEOUT = 500;
 const int DATA_TIMEOUT = 1000;
 const String STATUS_ITEM = "Status";
-int errorCount = 0, httpErrorCount = 0, httpCount=0;
+int errorCount = 0, httpErrorCount = 0, httpCount = 0;
 
 #ifndef VER_MAJ
 #error "Major version undefined"
@@ -76,7 +77,7 @@ void errLeds(void) {
 void printError(HTTPClient &http, int httpCode) {
   // httpCode will be negative on error
   if (httpCode > 0) {
-    if (httpCode<200||httpCode>299)
+    if (httpCode < 200 || httpCode > 299)
       httpErrorCount++;
     httpCount++;
     // HTTP header has been send and Server response header has been handled
@@ -178,44 +179,61 @@ bool getHostName() {
   return false;
 }
 
+void updateHandler(AsyncUDPPacket packet) {
+  Serial.println("UPDATE called");
+  packet.printf("OK UPDATE:%s", config.name);
+  doUpdate = true;
+}
+
+void resetHandler(AsyncUDPPacket packet) {
+  Serial.println("RESET called");
+  packet.printf("OK RESET:%s", config.name);
+  packet.flush();
+  resetWithReason("UDP RESET request");
+}
+
+void reconfHandler(AsyncUDPPacket packet) {
+  Serial.println("RECONF called");
+  config.canary = 0xDEADBEEF;
+  configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
+  packet.printf("OK RECONF:%s", config.name);
+  packet.flush();
+  resetWithReason("UDP RECONF request");
+}
+
+void infoHandler(AsyncUDPPacket packet) {
+  Serial.println("INFO called");
+  packet.printf("OK INFO:%s\n%s\n%s\n%lu\n%s:%s\n%s\n%s\n%d\n%d\n%d\n",
+                config.name, VERSION.c_str(), config.resetReason, millis(),
+                RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
+                RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
+                WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str(),
+                httpCount, errorCount, httpErrorCount);
+}
+
+void versionHandler(AsyncUDPPacket packet) {
+  Serial.println("VERSION called");
+  packet.printf("OK VERSION:%s %s", config.name, VERSION.c_str());
+}
+
+std::map<String, AuPacketHandlerFunction> registeredHandlers = {
+    {"UPDATE", updateHandler},
+    {"RECONF", reconfHandler},
+    {"RESET", resetHandler},
+    {"INFO", infoHandler},
+    {"VERSION", versionHandler}};
+
+void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler) {
+  registeredHandlers[trigger] = handler;
+}
+
 void handleUDPPacket(AsyncUDPPacket packet) {
   const char *data = (const char *)(packet.data());
-  if (strncmp("UPDATE", data, 6) == 0) {
-    Serial.println("UPDATE called");
-    packet.printf("OK UPDATE:%s", config.name);
-    doUpdate = true;
-    return;
-  }
-  if (strncmp("RESET", data, 5) == 0) {
-    Serial.println("RESET called");
-    packet.printf("OK RESET:%s", config.name);
-    packet.flush();
-    resetWithReason("UDP RESET request");
-    return;
-  }
-  if (strncmp("RECONF", data, 6) == 0) {
-    Serial.println("RECONF called");
-    config.canary = 0xDEADBEEF;
-    configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
-    packet.printf("OK RECONF:%s", config.name);
-    packet.flush();
-    resetWithReason("UDP RECONF request");
-    return;
-  }
-  if (strncmp("INFO", data, 4) == 0) {
-    Serial.println("INFO called");
-    packet.printf("OK INFO:%s\n%s\n%s\n%lu\n%s:%s\n%s\n%s\n%d\n%d\n%d\n",
-                  config.name, VERSION.c_str(), config.resetReason, millis(),
-                  RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
-                  RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
-                  WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str(),
-                  httpCount, errorCount, httpErrorCount);
-    return;
-  }
-  if (strncmp("VERSION", data, 7) == 0) {
-    Serial.println("VERSION called");
-    packet.printf("OK VERSION:%s %s", config.name, VERSION.c_str());
-    return;
+  if (packet.length() < 10) {
+    auto handler = registeredHandlers[String(data)];
+    if (handler != NULL) {
+      handler(packet);
+    }
   }
 }
 
