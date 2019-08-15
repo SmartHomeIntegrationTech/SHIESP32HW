@@ -179,20 +179,20 @@ bool getHostName() {
   return false;
 }
 
-void updateHandler(AsyncUDPPacket packet) {
+void updateHandler(AsyncUDPPacket &packet) {
   Serial.println("UPDATE called");
   packet.printf("OK UPDATE:%s", config.name);
   doUpdate = true;
 }
 
-void resetHandler(AsyncUDPPacket packet) {
+void resetHandler(AsyncUDPPacket &packet) {
   Serial.println("RESET called");
   packet.printf("OK RESET:%s", config.name);
   packet.flush();
   resetWithReason("UDP RESET request");
 }
 
-void reconfHandler(AsyncUDPPacket packet) {
+void reconfHandler(AsyncUDPPacket &packet) {
   Serial.println("RECONF called");
   config.canary = 0xDEADBEEF;
   configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
@@ -201,7 +201,7 @@ void reconfHandler(AsyncUDPPacket packet) {
   resetWithReason("UDP RECONF request");
 }
 
-void infoHandler(AsyncUDPPacket packet) {
+void infoHandler(AsyncUDPPacket &packet) {
   Serial.println("INFO called");
   packet.printf("OK INFO:%s\n"
                 "Version:%s\n"
@@ -220,7 +220,7 @@ void infoHandler(AsyncUDPPacket packet) {
                 httpCount, errorCount, httpErrorCount);
 }
 
-void versionHandler(AsyncUDPPacket packet) {
+void versionHandler(AsyncUDPPacket &packet) {
   Serial.println("VERSION called");
   packet.printf("OK VERSION:%s\nVersion:%s", config.name, VERSION.c_str());
 }
@@ -236,7 +236,7 @@ void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler) {
   registeredHandlers[trigger] = handler;
 }
 
-void handleUDPPacket(AsyncUDPPacket packet) {
+void handleUDPPacket(AsyncUDPPacket &packet) {
   const char *data = (const char *)(packet.data());
   if (packet.length() < 10) {
     auto handler = registeredHandlers[String(data)];
