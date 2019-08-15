@@ -267,8 +267,8 @@ void wifiDoSetup(String defaultName) {
 
   int connectCount = 0;
   while (WiFi.status() != WL_CONNECTED) {
-    if (connectCount > 5) {
-      resetWithReason("Initial wifi connection attempts exceeded");
+    if (connectCount > 10) {
+      ESP.restart();
     }
     delay(500);
     Serial.print(".");

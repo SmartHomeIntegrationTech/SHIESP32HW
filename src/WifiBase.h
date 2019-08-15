@@ -24,5 +24,9 @@ bool wifiIsConntected();
 void wifiDoSetup(String defaultName);
 void errLeds(void);
 
+extern const int CONNECT_TIMEOUT;
+extern const int DATA_TIMEOUT;
+extern const String STATUS_ITEM;
+
 #define WIFIBASE_H
 #endif

@@ -25,14 +25,14 @@ env_name = str(env["PIOENV"])
 outputNamesRaw = config.get("env:"+env_name,"custom_outputNames", fallback=None)
 if outputNamesRaw is None:
     print("No custom names found")
-    exit()
-outputNames=outputNamesRaw.split(" ")
-print(outputNames)
-my_flags = env.ParseFlags(env['BUILD_FLAGS'])
-defines = {k: v for (k, v) in my_flags.get("CPPDEFINES")}
-version="{}.{}.{}".format(defines['VER_MAJ'],defines['VER_MIN'],defines['VER_PAT'])
-print("Version:{}".format(version))
-env.AddPostAction(
-    "$BUILD_DIR/${PROGNAME}.bin",
-    prepareImage(version, env['PROJECTBUILD_DIR'], env['PROGNAME'], env_name, outputNames)
-)
+else:
+    outputNames=outputNamesRaw.split(" ")
+    print(outputNames)
+    my_flags = env.ParseFlags(env['BUILD_FLAGS'])
+    defines = {k: v for (k, v) in my_flags.get("CPPDEFINES")}
+    version="{}.{}.{}".format(defines['VER_MAJ'],defines['VER_MIN'],defines['VER_PAT'])
+    print("Version:{}".format(version))
+    env.AddPostAction(
+        "$BUILD_DIR/${PROGNAME}.bin",
+        prepareImage(version, env['PROJECTBUILD_DIR'], env['PROGNAME'], env_name, outputNames)
+    )
