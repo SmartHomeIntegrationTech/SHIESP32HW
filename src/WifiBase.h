@@ -12,16 +12,22 @@ typedef struct {
 } config_t;
 extern config_t config;
 
+String getConfigName();
+
 void setupWatchdog();
 void feedWatchdog();
+
 void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
+
 void resetWithReason(String reason, bool restart);
+
 void uploadInfo(String prefix, String item, String value);
 void uploadInfo(String prefix, String item, float value);
 void uploadInfo(String item, String value);
 void uploadInfo(String item, float value);
 bool wifiIsConntected();
 void wifiDoSetup(String defaultName);
+
 void errLeds(void);
 
 extern const int CONNECT_TIMEOUT;

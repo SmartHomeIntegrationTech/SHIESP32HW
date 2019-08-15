@@ -203,7 +203,16 @@ void reconfHandler(AsyncUDPPacket packet) {
 
 void infoHandler(AsyncUDPPacket packet) {
   Serial.println("INFO called");
-  packet.printf("OK INFO:%s\n%s\n%s\n%lu\n%s:%s\n%s\n%s\n%d\n%d\n%d\n",
+  packet.printf("OK INFO:%s\n"
+                "Version:%s\n"
+                "ResetReason:%s\n"
+                "RunTimeInMillis:%lu\n"
+                "ResetSource:%s:%s\n"
+                "LocalIP:%s\n"
+                "Mac:%s\n"
+                "HttpCount:%d\n"
+                "ErrorCount:%d\n"
+                "HttpErrorCount:%d\n",
                 config.name, VERSION.c_str(), config.resetReason, millis(),
                 RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
                 RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
@@ -213,7 +222,7 @@ void infoHandler(AsyncUDPPacket packet) {
 
 void versionHandler(AsyncUDPPacket packet) {
   Serial.println("VERSION called");
-  packet.printf("OK VERSION:%s %s", config.name, VERSION.c_str());
+  packet.printf("OK VERSION:%s\nVersion:%s", config.name, VERSION.c_str());
 }
 
 std::map<String, AuPacketHandlerFunction> registeredHandlers = {
@@ -236,6 +245,8 @@ void handleUDPPacket(AsyncUDPPacket packet) {
     }
   }
 }
+
+String getConfigName() { return String(config.name); }
 
 void wifiDoSetup(String defaultName) {
   IPAddress primaryDNS(192, 168, 188, 202); // optional
