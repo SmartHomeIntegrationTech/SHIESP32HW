@@ -1,4 +1,5 @@
 #include "WifiBase.h"
+#include "oled/SSD1306Wire.h"
 #include <Arduino.h>
 #include <AsyncUDP.h>
 #include <HTTPClient.h>
@@ -55,6 +56,10 @@ bool doUpdate = false;
 const int wdtTimeout = 15000; // time in ms to trigger the watchdog
 hw_timer_t *timer = NULL;
 
+#if(BOARD==HELTEC)
+  SSD1306Wire display = SSD1306Wire(0x3c, SDA_OLED, SCL_OLED, RST_OLED, GEOMETRY_128_64);
+#endif
+
 void IRAM_ATTR resetModule() {
   ets_printf("Watchdog bit, reboot\n");
   resetWithReason("Watchdog triggered", false);
@@ -105,6 +110,29 @@ void uploadInfo(String name, String item, String value) {
   if (item == STATUS_ITEM && value != "OK") {
     tryHard = true;
   }
+  #if (BOARD==HELTEC)
+  static String lineBuf[4]={"","","",""};
+  bool updated=false;
+  if (item == STATUS_ITEM) {
+    lineBuf[3]=value;
+    updated=true;
+  } else if (item == "Temperature") {
+    lineBuf[0]="Temperatur:      "+value+"°C";
+    updated=true;
+  } else if (item == "Humidity") {
+    lineBuf[1]="Luftfeuchtigkeit:"+value+"%";
+    updated=true;
+  } if (item == "StaticIaq") {
+    lineBuf[2]="Luftqualität:    "+value;
+    updated=true;
+  }
+  if (updated) {
+    display.clear();
+    for (int i=0;i<4;i++)
+      display.drawStringMaxWidth(0,i*13, 128, lineBuf[i]);
+    display.display();
+  }
+  #endif
   int retryCount = 0;
   do {
     HTTPClient http;
@@ -255,6 +283,13 @@ void wifiDoSetup(String defaultName) {
   feedWatchdog();
 
   Serial.begin(115200);
+  #if(BOARD==HELTEC)
+  display.init();
+  display.flipScreenVertically();
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(0, 0, "OLED initial done!");
+  display.display();
+  #endif
 
   configPrefs.begin(CONFIG);
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
@@ -372,15 +407,16 @@ void startUpdate() {
 bool wifiIsConntected() {
   static int retryCount = 0;
   while (WiFi.status() != WL_CONNECTED) {
+    feedWatchdog();
     if (retryCount > 6) {
-      resetWithReason("Retry count for Wifi exceeded");
+      resetWithReason("Retry count for Wifi exceeded"+WiFi.status());
     }
     WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
-    delay(500);
     retryCount++;
+    delay(retryCount*1000);
   }
   retryCount = 0;
   if (doUpdate) {
