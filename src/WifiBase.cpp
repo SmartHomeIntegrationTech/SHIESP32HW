@@ -58,6 +58,8 @@ hw_timer_t *timer = NULL;
 
 #if(BOARD==HELTEC)
   SSD1306Wire display = SSD1306Wire(0x3c, SDA_OLED, SCL_OLED, RST_OLED, GEOMETRY_128_64);
+  static String displayLineBuf[7]={"Temperatur:","n/a","Luftfeuchtigkeit:","n/a","Luftqualität:","n/a",""};
+  bool displayUpdated=false;
 #endif
 
 void IRAM_ATTR resetModule() {
@@ -99,6 +101,11 @@ void printError(HTTPClient &http, int httpCode) {
                   http.errorToString(httpCode).c_str());
   }
 }
+#if (BOARD==HELTEC)
+void setBrightness(uint8_t value){
+  display.setBrightness(value);
+}
+#endif
 
 void uploadInfo(String name, String item, float value) {
   uploadInfo(name, item, String(value, 1));
@@ -111,26 +118,18 @@ void uploadInfo(String name, String item, String value) {
     tryHard = true;
   }
   #if (BOARD==HELTEC)
-  static String lineBuf[4]={"","","",""};
-  bool updated=false;
   if (item == STATUS_ITEM) {
-    lineBuf[3]=value;
-    updated=true;
+    displayLineBuf[6]=value;
+    displayUpdated=true;
   } else if (item == "Temperature") {
-    lineBuf[0]="Temperatur:      "+value+"°C";
-    updated=true;
+    displayLineBuf[1]=value+"°C";
+    displayUpdated=true;
   } else if (item == "Humidity") {
-    lineBuf[1]="Luftfeuchtigkeit:"+value+"%";
-    updated=true;
+    displayLineBuf[3]=value+"%";
+    displayUpdated=true;
   } if (item == "StaticIaq") {
-    lineBuf[2]="Luftqualität:    "+value;
-    updated=true;
-  }
-  if (updated) {
-    display.clear();
-    for (int i=0;i<4;i++)
-      display.drawStringMaxWidth(0,i*13, 128, lineBuf[i]);
-    display.display();
+    displayLineBuf[5]=value;
+    displayUpdated=true;
   }
   #endif
   int retryCount = 0;
@@ -427,6 +426,15 @@ bool wifiIsConntected() {
       udpMulticast.printf("OK UPDATE:%s No update available", config.name);
     }
     doUpdate = false;
+  }
+  if (displayUpdated) {
+    display.clear();
+    for (int i=1;i<6;i+=2)
+      display.drawString(90,(i/2)*13, displayLineBuf[i]);
+    for (int i=0;i<6;i+=2)
+      display.drawString(0,(i/2)*13, displayLineBuf[i]);
+    display.drawStringMaxWidth(0,3*13, 128, displayLineBuf[6]);
+    display.display();
   }
   return true;
 }

@@ -5,9 +5,14 @@ void setup() {
     wifiDoSetup("Test");
 }
 void loop() {
+    static int count=0;
     if (wifiIsConntected()){
-        uploadInfo("Test", 1.3);
+        uploadInfo("StaticIaq", 55);
+        uploadInfo("Temperature", 25);
+        uploadInfo("Humidity", 60);
+        Serial.println("Brightness is now:"+String(count));
+        setBrightness(count++);
     }
     feedWatchdog();
-    delay(5000);
+    delay(1000);
 }

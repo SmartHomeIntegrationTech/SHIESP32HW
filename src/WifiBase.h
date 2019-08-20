@@ -17,6 +17,10 @@ String getConfigName();
 void setupWatchdog();
 void feedWatchdog();
 
+#if (BOARD==HELTEC)
+void setBrightness(uint8_t value);
+#endif
+
 void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
 
 void resetWithReason(String reason, bool restart);
