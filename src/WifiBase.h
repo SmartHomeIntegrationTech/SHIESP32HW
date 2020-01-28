@@ -17,7 +17,7 @@ String getConfigName();
 void setupWatchdog();
 void feedWatchdog();
 
-#if (BOARD==HELTEC)
+#ifdef HAS_DISPLAY
 void setBrightness(uint8_t value);
 #endif
 

@@ -10,8 +10,10 @@ void loop() {
         uploadInfo("StaticIaq", 55);
         uploadInfo("Temperature", 25);
         uploadInfo("Humidity", 60);
-        Serial.println("Brightness is now:"+String(count));
-        setBrightness(count++);
+        #ifdef HAS_DISPLAY
+            Serial.println("Brightness is now:"+String(count));
+            setBrightness(count++);
+        #endif
     }
     feedWatchdog();
     delay(1000);

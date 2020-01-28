@@ -1,3 +1,4 @@
+from __future__ import print_function
 Import("env")
 import os
 try:
@@ -22,7 +23,7 @@ def prepareImage(version, buildDir, progName, env_name, outputNames):
 config = configparser.ConfigParser()
 config.read("platformio.ini")
 env_name = str(env["PIOENV"])
-outputNamesRaw = config.get("env:"+env_name,"custom_outputNames", fallback=None)
+outputNamesRaw = config.get("env:"+env_name,"custom_outputNames")
 if outputNamesRaw is None:
     print("No custom names found")
 else:
@@ -34,5 +35,5 @@ else:
     print("Version:{}".format(version))
     env.AddPostAction(
         "$BUILD_DIR/${PROGNAME}.bin",
-        prepareImage(version, env['PROJECTBUILD_DIR'], env['PROGNAME'], env_name, outputNames)
+        prepareImage(version, env['PROJECT_BUILD_DIR'], env['PROGNAME'], env_name, outputNames)
     )

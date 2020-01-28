@@ -56,7 +56,7 @@ bool doUpdate = false;
 const int wdtTimeout = 15000; // time in ms to trigger the watchdog
 hw_timer_t *timer = NULL;
 
-#if(BOARD==HELTEC)
+#ifdef HAS_DISPLAY
   SSD1306Wire display = SSD1306Wire(0x3c, SDA_OLED, SCL_OLED, RST_OLED, GEOMETRY_128_64);
   static String displayLineBuf[7]={"Temperatur:","n/a","Luftfeuchtigkeit:","n/a","Luftqualität:","n/a",""};
   bool displayUpdated=false;
@@ -101,7 +101,7 @@ void printError(HTTPClient &http, int httpCode) {
                   http.errorToString(httpCode).c_str());
   }
 }
-#if (BOARD==HELTEC)
+#ifdef HAS_DISPLAY
 void setBrightness(uint8_t value){
   display.setBrightness(value);
 }
@@ -117,7 +117,7 @@ void uploadInfo(String name, String item, String value) {
   if (item == STATUS_ITEM && value != "OK") {
     tryHard = true;
   }
-  #if (BOARD==HELTEC)
+  #ifdef HAS_DISPLAY
   if (item == STATUS_ITEM) {
     displayLineBuf[6]=value;
     displayUpdated=true;
@@ -135,7 +135,7 @@ void uploadInfo(String name, String item, String value) {
   int retryCount = 0;
   do {
     HTTPClient http;
-    http.begin("http://192.168.188.202:8080/rest/items/esp32" + name + item +
+    http.begin("http://192.168.188.250:8080/rest/items/esp32" + name + item +
                "/state");
     http.setConnectTimeout(CONNECT_TIMEOUT);
     http.setTimeout(DATA_TIMEOUT);
@@ -189,7 +189,7 @@ bool getHostName() {
   HTTPClient http;
   String mac = WiFi.macAddress();
   mac.replace(':', '_');
-  http.begin("http://192.168.188.202/esp/" + mac);
+  http.begin("http://192.168.188.250/esp/" + mac);
   http.setConnectTimeout(CONNECT_TIMEOUT);
   http.setTimeout(DATA_TIMEOUT);
   int httpCode = http.GET();
@@ -282,12 +282,12 @@ void wifiDoSetup(String defaultName) {
   feedWatchdog();
 
   Serial.begin(115200);
-  #if(BOARD==HELTEC)
-  display.init();
-  display.flipScreenVertically();
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(0, 0, "OLED initial done!");
-  display.display();
+  #ifdef HAS_DISPLAY
+    display.init();
+    display.flipScreenVertically();
+    display.setFont(ArialMT_Plain_10);
+    display.drawString(0, 0, "OLED initial done!");
+    display.display();
   #endif
 
   configPrefs.begin(CONFIG);
@@ -351,7 +351,7 @@ void updateProgress(size_t a, size_t b) {
 
 bool isUpdateAvailable() {
   HTTPClient http;
-  http.begin("http://192.168.188.202/esp/firmware/" + String(config.name) +
+  http.begin("http://192.168.188.250/esp/firmware/" + String(config.name) +
              ".version");
   http.setConnectTimeout(CONNECT_TIMEOUT);
   http.setTimeout(DATA_TIMEOUT);
@@ -366,7 +366,7 @@ bool isUpdateAvailable() {
 
 void startUpdate() {
   HTTPClient http;
-  http.begin("http://192.168.188.202/esp/firmware/" + String(config.name) +
+  http.begin("http://192.168.188.250/esp/firmware/" + String(config.name) +
              ".bin");
   http.setConnectTimeout(CONNECT_TIMEOUT);
   http.setTimeout(DATA_TIMEOUT);
@@ -427,15 +427,18 @@ bool wifiIsConntected() {
     }
     doUpdate = false;
   }
-  if (displayUpdated) {
-    display.clear();
-    for (int i=1;i<6;i+=2)
-      display.drawString(90,(i/2)*13, displayLineBuf[i]);
-    for (int i=0;i<6;i+=2)
-      display.drawString(0,(i/2)*13, displayLineBuf[i]);
-    display.drawStringMaxWidth(0,3*13, 128, displayLineBuf[6]);
-    display.display();
-  }
+  #ifdef HAS_DISPLAY
+    if (displayUpdated) {
+      display.clear();
+      for (int i=1;i<6;i+=2)
+        display.drawString(90,(i/2)*13, displayLineBuf[i]);
+      for (int i=0;i<6;i+=2)
+        display.drawString(0,(i/2)*13, displayLineBuf[i]);
+      display.drawStringMaxWidth(0,3*13, 128, displayLineBuf[6]);
+      display.display();
+      displayUpdated=false;
+    }
+  #endif
   return true;
 }
 
