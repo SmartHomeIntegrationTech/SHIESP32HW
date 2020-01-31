@@ -22,6 +22,13 @@ PROGMEM const String RESET_SOURCE[] = {
 #define BUILTIN_LED -1
 #endif
 
+#ifndef NO_SERIAL
+HardwareSerial *debugSerial=&Serial;
+#else
+NullPrint null_stream;
+NullPrint *debugSerial=&null_stream;
+#endif 
+
 const char *ssid = "Elfenburg";
 const char *password = "fe-shnyed-olv-ek";
 
@@ -88,16 +95,16 @@ void printError(HTTPClient &http, int httpCode) {
       httpErrorCount++;
     httpCount++;
     // HTTP header has been send and Server response header has been handled
-    Serial.printf("[HTTP] PUT... code: %d\n", httpCode);
+    debugSerial->printf("[HTTP] PUT... code: %d\n", httpCode);
 
     // file found at server
     if (httpCode == HTTP_CODE_OK) {
       String payload = http.getString();
-      Serial.println(payload);
+      debugSerial->println(payload);
     }
   } else {
     errorCount++;
-    Serial.printf("[HTTP] PUT... failed, error: %s\n",
+    debugSerial->printf("[HTTP] PUT... failed, error: %s\n",
                   http.errorToString(httpCode).c_str());
   }
 }
@@ -112,7 +119,7 @@ void uploadInfo(String name, String item, float value) {
 }
 
 void uploadInfo(String name, String item, String value) {
-  Serial.print(name + " " + item + " " + value);
+  debugSerial->print(name + " " + item + " " + value);
   bool tryHard = false;
   if (item == STATUS_ITEM && value != "OK") {
     tryHard = true;
@@ -170,19 +177,19 @@ void resetWithReason(String reason, bool restart = true) {
   reason.toCharArray(config.resetReason, sizeof(config.resetReason));
   configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
   if (restart) {
-    Serial.println("Restarting:" + reason);
+    debugSerial->println("Restarting:" + reason);
     delay(100);
     ESP.restart();
   }
 }
 
 void printConfig() {
-  Serial.printf("IP address:  %08X\n", config.local_IP);
-  Serial.printf("Subnet Mask: %08X\n", config.subnet);
-  Serial.printf("Gateway IP:  %08X\n", config.gateway);
-  Serial.printf("Canary:      %08X\n", config.canary);
-  Serial.printf("Name:        %-40s\n", config.name);
-  Serial.printf("Reset reason:%-40s\n", config.resetReason);
+  debugSerial->printf("IP address:  %08X\n", config.local_IP);
+  debugSerial->printf("Subnet Mask: %08X\n", config.subnet);
+  debugSerial->printf("Gateway IP:  %08X\n", config.gateway);
+  debugSerial->printf("Canary:      %08X\n", config.canary);
+  debugSerial->printf("Name:        %-40s\n", config.name);
+  debugSerial->printf("Reset reason:%-40s\n", config.resetReason);
 }
 
 bool getHostName() {
@@ -200,27 +207,27 @@ bool getHostName() {
     if (newName.length() == 0)
       return false;
     newName.toCharArray(config.name, sizeof(config.name));
-    Serial.printf("Recevied new Name:%s : %s\n", newName.c_str(), config.name);
+    debugSerial->printf("Recevied new Name:%s : %s\n", newName.c_str(), config.name);
     return true;
   }
   return false;
 }
 
 void updateHandler(AsyncUDPPacket &packet) {
-  Serial.println("UPDATE called");
+  debugSerial->println("UPDATE called");
   packet.printf("OK UPDATE:%s", config.name);
   doUpdate = true;
 }
 
 void resetHandler(AsyncUDPPacket &packet) {
-  Serial.println("RESET called");
+  debugSerial->println("RESET called");
   packet.printf("OK RESET:%s", config.name);
   packet.flush();
   resetWithReason("UDP RESET request");
 }
 
 void reconfHandler(AsyncUDPPacket &packet) {
-  Serial.println("RECONF called");
+  debugSerial->println("RECONF called");
   config.canary = 0xDEADBEEF;
   configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
   packet.printf("OK RECONF:%s", config.name);
@@ -229,7 +236,7 @@ void reconfHandler(AsyncUDPPacket &packet) {
 }
 
 void infoHandler(AsyncUDPPacket &packet) {
-  Serial.println("INFO called");
+  debugSerial->println("INFO called");
   packet.printf("OK INFO:%s\n"
                 "Version:%s\n"
                 "ResetReason:%s\n"
@@ -248,7 +255,7 @@ void infoHandler(AsyncUDPPacket &packet) {
 }
 
 void versionHandler(AsyncUDPPacket &packet) {
-  Serial.println("VERSION called");
+  debugSerial->println("VERSION called");
   packet.printf("OK VERSION:%s\nVersion:%s", config.name, VERSION.c_str());
 }
 
@@ -280,8 +287,7 @@ void wifiDoSetup(String defaultName) {
   IPAddress secondaryDNS(192, 168, 188, 1); // optional
   setupWatchdog();
   feedWatchdog();
-
-  Serial.begin(115200);
+  debugSerial->begin(115200);
   #ifdef HAS_DISPLAY
     display.init();
     display.flipScreenVertically();
@@ -293,19 +299,19 @@ void wifiDoSetup(String defaultName) {
   configPrefs.begin(CONFIG);
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
   if (config.canary == CONST_MARKER) {
-    Serial.println("Restoring config from memory");
+    debugSerial->println("Restoring config from memory");
     printConfig();
     WiFi.setHostname(config.name);
     if (!WiFi.config(config.local_IP, config.gateway, config.subnet, primaryDNS,
                      secondaryDNS)) {
-      Serial.println("STA Failed to configure");
+      debugSerial->println("STA Failed to configure");
     }
   } else {
-    Serial.printf("Canary mismatch, stored: %08X\n", config.canary);
+    debugSerial->printf("Canary mismatch, stored: %08X\n", config.canary);
     defaultName.toCharArray(config.name, sizeof(config.name));
   }
 
-  Serial.print("Connecting to " + String(ssid));
+  debugSerial->print("Connecting to " + String(ssid));
 
   feedWatchdog();
   WiFi.begin(ssid, password);
@@ -316,13 +322,13 @@ void wifiDoSetup(String defaultName) {
       ESP.restart();
     }
     delay(500);
-    Serial.print(".");
+    debugSerial->print(".");
     connectCount++;
   }
   feedWatchdog();
-  Serial.println("WiFi connected!");
+  debugSerial->println("WiFi connected!");
   if (config.canary != CONST_MARKER && getHostName()) {
-    Serial.println("Storing config");
+    debugSerial->println("Storing config");
     config.local_IP = WiFi.localIP();
     config.gateway = WiFi.gatewayIP();
     config.subnet = WiFi.subnetMask();
@@ -331,7 +337,7 @@ void wifiDoSetup(String defaultName) {
     resetWithReason("Fresh-reset", false);
     config.canary = CONST_MARKER;
     configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
-    Serial.println("ESP Mac Address: " + WiFi.macAddress());
+    debugSerial->println("ESP Mac Address: " + WiFi.macAddress());
     printConfig();
   }
   uploadInfo(config.name, STATUS_ITEM,
@@ -358,7 +364,7 @@ bool isUpdateAvailable() {
   int httpCode = http.GET();
   if (httpCode == 200) {
     String remoteVersion = http.getString();
-    Serial.println("Remote version is:" + remoteVersion);
+    debugSerial->println("Remote version is:" + remoteVersion);
     return VERSION.compareTo(remoteVersion) < 0;
   }
   return false;
@@ -422,7 +428,7 @@ bool wifiIsConntected() {
     if (isUpdateAvailable()) {
       startUpdate();
     } else {
-      Serial.println("No newer version available");
+      debugSerial->println("No newer version available");
       udpMulticast.printf("OK UPDATE:%s No update available", config.name);
     }
     doUpdate = false;

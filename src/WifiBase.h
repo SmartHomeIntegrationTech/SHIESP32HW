@@ -21,6 +21,19 @@ void feedWatchdog();
 void setBrightness(uint8_t value);
 #endif
 
+#ifndef NO_SERIAL
+extern HardwareSerial *debugSerial;
+#else
+class NullPrint: public Print 
+{ 
+  public: 
+    NullPrint() {}
+    size_t write(uint8_t) {return 1;}
+    void begin(int baudRate) {}
+};
+extern NullPrint *debugSerial;
+#endif
+
 void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
 
 void resetWithReason(String reason, bool restart);
