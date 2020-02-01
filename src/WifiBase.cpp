@@ -7,6 +7,7 @@
 #include <Update.h>
 #include <WiFi.h>
 #include <map>
+#include <vector>
 #include <rom/rtc.h>
 
 PROGMEM const String RESET_SOURCE[] = {
@@ -23,19 +24,20 @@ PROGMEM const String RESET_SOURCE[] = {
 #endif
 
 #ifndef NO_SERIAL
-HardwareSerial *debugSerial=&Serial;
+std::unique_ptr<Print> debugSerial(&Serial);
 #else
 NullPrint null_stream;
-NullPrint *debugSerial=&null_stream;
+std::unique_ptr<Print> debugSerial(&null_stream);
 #endif 
 
 const char *ssid = "Elfenburg";
 const char *password = "fe-shnyed-olv-ek";
 
 AsyncUDP udpMulticast;
-const int CONNECT_TIMEOUT = 500;
-const int DATA_TIMEOUT = 1000;
-const String STATUS_ITEM = "Status";
+const int SHI::CONNECT_TIMEOUT = 500;
+const int SHI::DATA_TIMEOUT = 1000;
+const String SHI::STATUS_ITEM = "Status";
+const String SHI::STATUS_OK = "OK";
 int errorCount = 0, httpErrorCount = 0, httpCount = 0;
 
 #ifndef VER_MAJ
@@ -47,18 +49,22 @@ int errorCount = 0, httpErrorCount = 0, httpCount = 0;
 #ifndef VER_PAT
 #error "Patch version undefined"
 #endif
-const uint8_t MAJOR_VERSION = VER_MAJ;
-const uint8_t MINOR_VERSION = VER_MIN;
-const uint8_t PATCH_VERSION = VER_PAT;
-const String VERSION = String(MAJOR_VERSION, 10) + "." +
-                       String(MINOR_VERSION, 10) + "." +
-                       String(PATCH_VERSION, 10);
+const uint8_t SHI::MAJOR_VERSION = VER_MAJ;
+const uint8_t SHI::MINOR_VERSION = VER_MIN;
+const uint8_t SHI::PATCH_VERSION = VER_PAT;
+const String SHI::VERSION = String(SHI::MAJOR_VERSION, 10) + "." +
+                       String(SHI::MINOR_VERSION, 10) + "." +
+                       String(SHI::PATCH_VERSION, 10);
 
 const char *CONFIG = "wifiConfig";
 const uint32_t CONST_MARKER = 0xAFFEDEAD;
-config_t config;
+SHI::config_t SHI::config;
 Preferences configPrefs;
 bool doUpdate = false;
+
+SHI::HWBase SHI::hw;
+
+std::vector<SHI::Sensor *> sensors;
 
 const int wdtTimeout = 15000; // time in ms to trigger the watchdog
 hw_timer_t *timer = NULL;
@@ -71,11 +77,11 @@ hw_timer_t *timer = NULL;
 
 void IRAM_ATTR resetModule() {
   ets_printf("Watchdog bit, reboot\n");
-  resetWithReason("Watchdog triggered", false);
+  SHI::hw.resetWithReason("Watchdog triggered", false);
   esp_restart();
 }
 
-void errLeds(void) {
+void SHI::HWBase::errLeds(void) {
   // Set pin mode
   if (BUILTIN_LED != -1) {
     pinMode(BUILTIN_LED, OUTPUT);
@@ -85,6 +91,38 @@ void errLeds(void) {
     digitalWrite(BUILTIN_LED, LOW);
   } else {
     delay(1000);
+  }
+}
+
+void SHI::HWBase::addSensor(SHI::Sensor &sensor) {
+  sensors.push_back(&sensor);
+}
+
+void SHI::HWBase::loop() {
+  for (auto &&sensor : sensors)
+  {
+    auto result=sensor->readSensor();
+    feedWatchdog();
+    if (result==nullptr){
+      auto msg=sensor->getStatusMessage();
+      uploadInfo(getConfigName(), STATUS_ITEM, msg);
+      feedWatchdog();
+      if (sensor->errorIsFatal()){
+        while (true)
+        {
+          errLeds();
+        }
+      }
+    } else {
+      for (auto &&data : result->data)
+      {
+        if (data->type != SHI::NO_DATA) {
+          uploadInfo(getConfigName(), data->name, data->toTransmitString(*data));
+          feedWatchdog();
+        }
+      }
+      uploadInfo(getConfigName(), STATUS_ITEM, STATUS_OK);
+    }
   }
 }
 
@@ -108,20 +146,17 @@ void printError(HTTPClient &http, int httpCode) {
                   http.errorToString(httpCode).c_str());
   }
 }
-#ifdef HAS_DISPLAY
-void setBrightness(uint8_t value){
+
+void SHI::HWBase::setDisplayBrightness(uint8_t value){
+  #ifdef HAS_DISPLAY
   display.setBrightness(value);
-}
-#endif
-
-void uploadInfo(String name, String item, float value) {
-  uploadInfo(name, item, String(value, 1));
+  #endif
 }
 
-void uploadInfo(String name, String item, String value) {
+void SHI::HWBase::uploadInfo(String name, String item, String value) {
   debugSerial->print(name + " " + item + " " + value);
   bool tryHard = false;
-  if (item == STATUS_ITEM && value != "OK") {
+  if (item == STATUS_ITEM && value != STATUS_OK) {
     tryHard = true;
   }
   #ifdef HAS_DISPLAY
@@ -134,8 +169,16 @@ void uploadInfo(String name, String item, String value) {
   } else if (item == "Humidity") {
     displayLineBuf[3]=value+"%";
     displayUpdated=true;
-  } if (item == "StaticIaq") {
+  } else if (item == "StaticIaq") {
     displayLineBuf[5]=value;
+    displayUpdated=true;
+  } else if (item == "PM10") {
+    displayLineBuf[2]="PM10";
+    displayLineBuf[3]=value+"µg";
+    displayUpdated=true;
+  } else if (item == "PM2_5") {
+    displayLineBuf[0]="PM2.5";
+    displayLineBuf[1]=value+"µg";
     displayUpdated=true;
   }
   #endif
@@ -156,15 +199,7 @@ void uploadInfo(String name, String item, String value) {
   } while (tryHard && retryCount < 15);
 }
 
-void uploadInfo(String item, String value) {
-  uploadInfo(String(config.name), item, value);
-}
-
-void uploadInfo(String item, float value) {
-  uploadInfo(String(config.name), item, String(value, 1));
-}
-
-void setupWatchdog() {
+void SHI::HWBase::setupWatchdog() {
   timer = timerBegin(0, 80, true);                  // timer 0, div 80
   timerAttachInterrupt(timer, &resetModule, true);  // attach callback
   timerAlarmWrite(timer, wdtTimeout * 1000, false); // set time in us
@@ -173,9 +208,9 @@ void setupWatchdog() {
 
 void disableWatchdog() { timerEnd(timer); }
 
-void resetWithReason(String reason, bool restart = true) {
-  reason.toCharArray(config.resetReason, sizeof(config.resetReason));
-  configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
+void SHI::HWBase::resetWithReason(String reason, bool restart = true) {
+  reason.toCharArray(SHI::config.resetReason, sizeof(SHI::config.resetReason));
+  configPrefs.putBytes(CONFIG, &config, sizeof(SHI::config_t));
   if (restart) {
     debugSerial->println("Restarting:" + reason);
     delay(100);
@@ -184,21 +219,21 @@ void resetWithReason(String reason, bool restart = true) {
 }
 
 void printConfig() {
-  debugSerial->printf("IP address:  %08X\n", config.local_IP);
-  debugSerial->printf("Subnet Mask: %08X\n", config.subnet);
-  debugSerial->printf("Gateway IP:  %08X\n", config.gateway);
-  debugSerial->printf("Canary:      %08X\n", config.canary);
-  debugSerial->printf("Name:        %-40s\n", config.name);
-  debugSerial->printf("Reset reason:%-40s\n", config.resetReason);
+  debugSerial->printf("IP address:  %08X\n", SHI::config.local_IP);
+  debugSerial->printf("Subnet Mask: %08X\n", SHI::config.subnet);
+  debugSerial->printf("Gateway IP:  %08X\n", SHI::config.gateway);
+  debugSerial->printf("Canary:      %08X\n", SHI::config.canary);
+  debugSerial->printf("Name:        %-40s\n", SHI::config.name);
+  debugSerial->printf("Reset reason:%-40s\n", SHI::config.resetReason);
 }
 
-bool getHostName() {
+bool updateHostName() {
   HTTPClient http;
   String mac = WiFi.macAddress();
   mac.replace(':', '_');
   http.begin("http://192.168.188.250/esp/" + mac);
-  http.setConnectTimeout(CONNECT_TIMEOUT);
-  http.setTimeout(DATA_TIMEOUT);
+  http.setConnectTimeout(SHI::CONNECT_TIMEOUT);
+  http.setTimeout(SHI::DATA_TIMEOUT);
   int httpCode = http.GET();
   if (httpCode == 200) {
     String newName = http.getString();
@@ -206,33 +241,35 @@ bool getHostName() {
     newName.trim();
     if (newName.length() == 0)
       return false;
-    newName.toCharArray(config.name, sizeof(config.name));
-    debugSerial->printf("Recevied new Name:%s : %s\n", newName.c_str(), config.name);
+    newName.toCharArray(SHI::config.name, sizeof(SHI::config.name));
+    debugSerial->printf("Recevied new Name:%s : %s\n", newName.c_str(), SHI::config.name);
     return true;
+  } else {
+    debugSerial->println("Failed to update name for mac:"+mac);
   }
   return false;
 }
 
 void updateHandler(AsyncUDPPacket &packet) {
   debugSerial->println("UPDATE called");
-  packet.printf("OK UPDATE:%s", config.name);
+  packet.printf("OK UPDATE:%s", SHI::config.name);
   doUpdate = true;
 }
 
 void resetHandler(AsyncUDPPacket &packet) {
   debugSerial->println("RESET called");
-  packet.printf("OK RESET:%s", config.name);
+  packet.printf("OK RESET:%s", SHI::config.name);
   packet.flush();
-  resetWithReason("UDP RESET request");
+  SHI::hw.resetWithReason("UDP RESET request");
 }
 
 void reconfHandler(AsyncUDPPacket &packet) {
   debugSerial->println("RECONF called");
-  config.canary = 0xDEADBEEF;
-  configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
-  packet.printf("OK RECONF:%s", config.name);
+  SHI::config.canary = 0xDEADBEEF;
+  configPrefs.putBytes(CONFIG, &SHI::config, sizeof(SHI::config_t));
+  packet.printf("OK RECONF:%s", SHI::config.name);
   packet.flush();
-  resetWithReason("UDP RECONF request");
+  SHI::hw.resetWithReason("UDP RECONF request");
 }
 
 void infoHandler(AsyncUDPPacket &packet) {
@@ -247,7 +284,7 @@ void infoHandler(AsyncUDPPacket &packet) {
                 "HttpCount:%d\n"
                 "ErrorCount:%d\n"
                 "HttpErrorCount:%d\n",
-                config.name, VERSION.c_str(), config.resetReason, millis(),
+                SHI::config.name, SHI::VERSION.c_str(), SHI::config.resetReason, millis(),
                 RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
                 RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
                 WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str(),
@@ -256,7 +293,7 @@ void infoHandler(AsyncUDPPacket &packet) {
 
 void versionHandler(AsyncUDPPacket &packet) {
   debugSerial->println("VERSION called");
-  packet.printf("OK VERSION:%s\nVersion:%s", config.name, VERSION.c_str());
+  packet.printf("OK VERSION:%s\nVersion:%s", SHI::config.name, SHI::VERSION.c_str());
 }
 
 std::map<String, AuPacketHandlerFunction> registeredHandlers = {
@@ -266,7 +303,7 @@ std::map<String, AuPacketHandlerFunction> registeredHandlers = {
     {"INFO", infoHandler},
     {"VERSION", versionHandler}};
 
-void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler) {
+void SHI::HWBase::addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler) {
   registeredHandlers[trigger] = handler;
 }
 
@@ -280,35 +317,38 @@ void handleUDPPacket(AsyncUDPPacket &packet) {
   }
 }
 
-String getConfigName() { return String(config.name); }
+String SHI::HWBase::getConfigName() { return String(SHI::config.name); }
 
-void wifiDoSetup(String defaultName) {
+void SHI::HWBase::setup(String defaultName) {
   IPAddress primaryDNS(192, 168, 188, 202); // optional
   IPAddress secondaryDNS(192, 168, 188, 1); // optional
   setupWatchdog();
   feedWatchdog();
-  debugSerial->begin(115200);
+  #ifndef NO_SERIAL
+    reinterpret_cast<HardwareSerial*>(debugSerial.get())->begin(115200);
+  #endif
   #ifdef HAS_DISPLAY
     display.init();
     display.flipScreenVertically();
     display.setFont(ArialMT_Plain_10);
     display.drawString(0, 0, "OLED initial done!");
     display.display();
+    feedWatchdog();
   #endif
 
   configPrefs.begin(CONFIG);
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
-  if (config.canary == CONST_MARKER) {
+  if (SHI::config.canary == CONST_MARKER) {
     debugSerial->println("Restoring config from memory");
     printConfig();
-    WiFi.setHostname(config.name);
-    if (!WiFi.config(config.local_IP, config.gateway, config.subnet, primaryDNS,
+    WiFi.setHostname(SHI::config.name);
+    if (!WiFi.config(SHI::config.local_IP, SHI::config.gateway, SHI::config.subnet, primaryDNS,
                      secondaryDNS)) {
       debugSerial->println("STA Failed to configure");
     }
   } else {
-    debugSerial->printf("Canary mismatch, stored: %08X\n", config.canary);
-    defaultName.toCharArray(config.name, sizeof(config.name));
+    debugSerial->printf("Canary mismatch, stored: %08X\n", SHI::config.canary);
+    defaultName.toCharArray(SHI::config.name, sizeof(SHI::config.name));
   }
 
   debugSerial->print("Connecting to " + String(ssid));
@@ -327,89 +367,99 @@ void wifiDoSetup(String defaultName) {
   }
   feedWatchdog();
   debugSerial->println("WiFi connected!");
-  if (config.canary != CONST_MARKER && getHostName()) {
+  if (SHI::config.canary != CONST_MARKER && updateHostName()) {
     debugSerial->println("Storing config");
-    config.local_IP = WiFi.localIP();
-    config.gateway = WiFi.gatewayIP();
-    config.subnet = WiFi.subnetMask();
-    // config.name is set by getHostName
-    WiFi.setHostname(config.name);
+    SHI::config.local_IP = WiFi.localIP();
+    SHI::config.gateway = WiFi.gatewayIP();
+    SHI::config.subnet = WiFi.subnetMask();
+    // SHI::config.name is set by updateHostName
+    WiFi.setHostname(SHI::config.name);
     resetWithReason("Fresh-reset", false);
-    config.canary = CONST_MARKER;
+    SHI::config.canary = CONST_MARKER;
     configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
     debugSerial->println("ESP Mac Address: " + WiFi.macAddress());
     printConfig();
   }
-  uploadInfo(config.name, STATUS_ITEM,
+  uploadInfo(SHI::config.name, STATUS_ITEM,
              "STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
                  RESET_SOURCE[rtc_get_reset_reason(1)] + " " +
-                 String(config.resetReason));
+                 String(SHI::config.resetReason));
   feedWatchdog();
   if (udpMulticast.listenMulticast(IPAddress(239, 1, 23, 42), 2323)) {
     udpMulticast.onPacket(handleUDPPacket);
   }
+
+  for (auto &&sensor : sensors)
+  {
+    String name=sensor->getName();
+    debugSerial->println("Setting up: "+name);
+    sensor->setupSensor();
+    feedWatchdog();
+    debugSerial->println("Setup done of: "+name);
+  }
+  
 }
 
 void updateProgress(size_t a, size_t b) {
-  udpMulticast.printf("OK UPDATE:%s %u/%u", config.name, a, b);
-  feedWatchdog();
+  udpMulticast.printf("OK UPDATE:%s %u/%u", SHI::config.name, a, b);
+  SHI::hw.feedWatchdog();
 }
 
 bool isUpdateAvailable() {
   HTTPClient http;
-  http.begin("http://192.168.188.250/esp/firmware/" + String(config.name) +
+  http.begin("http://192.168.188.250/esp/firmware/" + String(SHI::config.name) +
              ".version");
-  http.setConnectTimeout(CONNECT_TIMEOUT);
-  http.setTimeout(DATA_TIMEOUT);
+  http.setConnectTimeout(SHI::CONNECT_TIMEOUT);
+  http.setTimeout(SHI::DATA_TIMEOUT);
   int httpCode = http.GET();
   if (httpCode == 200) {
     String remoteVersion = http.getString();
     debugSerial->println("Remote version is:" + remoteVersion);
-    return VERSION.compareTo(remoteVersion) < 0;
+    return SHI::VERSION.compareTo(remoteVersion) < 0;
   }
   return false;
 }
 
 void startUpdate() {
   HTTPClient http;
-  http.begin("http://192.168.188.250/esp/firmware/" + String(config.name) +
+  http.begin("http://192.168.188.250/esp/firmware/" + String(SHI::config.name) +
              ".bin");
-  http.setConnectTimeout(CONNECT_TIMEOUT);
-  http.setTimeout(DATA_TIMEOUT);
+  http.setConnectTimeout(SHI::CONNECT_TIMEOUT);
+  http.setTimeout(SHI::DATA_TIMEOUT);
   int httpCode = http.GET();
   if (httpCode == 200) {
-    udpMulticast.printf("OK UPDATE:%s Starting", config.name);
+    udpMulticast.printf("OK UPDATE:%s Starting", SHI::config.name);
     int size = http.getSize();
     if (size < 0) {
-      udpMulticast.printf("ERR UPDATE:%s Abort, no size", config.name);
+      udpMulticast.printf("ERR UPDATE:%s Abort, no size", SHI::config.name);
       return;
     }
     if (!Update.begin(size)) {
-      udpMulticast.printf("ERR UPDATE:%s Abort, not enough space", config.name);
+      udpMulticast.printf("ERR UPDATE:%s Abort, not enough space", SHI::config.name);
       return;
     }
     Update.onProgress(updateProgress);
     size_t written = Update.writeStream(http.getStream());
     if (written == size) {
-      udpMulticast.printf("OK UPDATE:%s Finishing", config.name);
+      udpMulticast.printf("OK UPDATE:%s Finishing", SHI::config.name);
       if (!Update.end()) {
         udpMulticast.printf("ERR UPDATE:%s Abort finish failed: %u",
-                            config.name, Update.getError());
+                            SHI::config.name, Update.getError());
       } else {
-        udpMulticast.printf("OK UPDATE:%s Finished", config.name);
+        udpMulticast.printf("OK UPDATE:%s Finished", SHI::config.name);
       }
     } else {
       udpMulticast.printf("ERR UPDATE:%s Abort, written:%d size:%d",
-                          config.name, written, size);
+                          SHI::config.name, written, size);
     }
-    config.canary = 0xDEADBEEF;
-    configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
-    resetWithReason("Firmware updated");
+    SHI::config.canary = 0xDEADBEEF;
+    configPrefs.putBytes(CONFIG, &SHI::config, sizeof(SHI::config_t));
+    SHI::hw.resetWithReason("Firmware updated");
   }
   http.end();
 }
 
-bool wifiIsConntected() {
+bool SHI::HWBase::wifiIsConntected() {
   static int retryCount = 0;
   while (WiFi.status() != WL_CONNECTED) {
     feedWatchdog();
@@ -429,7 +479,7 @@ bool wifiIsConntected() {
       startUpdate();
     } else {
       debugSerial->println("No newer version available");
-      udpMulticast.printf("OK UPDATE:%s No update available", config.name);
+      udpMulticast.printf("OK UPDATE:%s No update available", SHI::config.name);
     }
     doUpdate = false;
   }
@@ -448,6 +498,6 @@ bool wifiIsConntected() {
   return true;
 }
 
-void feedWatchdog() {
+void SHI::HWBase::feedWatchdog() {
   timerWrite(timer, 0); // reset timer (feed watchdog)
 }

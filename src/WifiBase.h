@@ -1,55 +1,64 @@
-#ifndef WIFIBASE_H
+#pragma once
 #include <Arduino.h>
 #include <AsyncUDP.h>
+#include <memory>
+#include "SHISensor.h"
 
-typedef struct {
+namespace SHI {
+
+struct config_t{
   uint32_t canary;
   uint32_t local_IP;
   uint32_t gateway;
   uint32_t subnet;
   char name[20];
   char resetReason[40];
-} config_t;
+};
 extern config_t config;
 
-String getConfigName();
+class HWBase {
+  public:
+    String getConfigName();
 
-void setupWatchdog();
-void feedWatchdog();
+    void setupWatchdog();
+    void feedWatchdog();
 
-#ifdef HAS_DISPLAY
-void setBrightness(uint8_t value);
-#endif
+    void addSensor(SHI::Sensor &sensor);
 
-#ifndef NO_SERIAL
-extern HardwareSerial *debugSerial;
-#else
-class NullPrint: public Print 
-{ 
-  public: 
-    NullPrint() {}
-    size_t write(uint8_t) {return 1;}
-    void begin(int baudRate) {}
+    void setDisplayBrightness(uint8_t value);
+
+    std::unique_ptr<Print> debugSerial;
+
+    void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
+
+    void resetWithReason(String reason, bool restart);
+    void errLeds(void);
+
+    void setup(String altName);
+    void loop();
+
+  private:
+    void uploadInfo(String prefix, String item, String value);
+    bool wifiIsConntected();
+    void wifiDoSetup(String defaultName);
+    class NullPrint: public Print 
+    { 
+      public: 
+        NullPrint() {}
+        size_t write(uint8_t) {return 1;}
+        void begin(int baudRate) {}
+    };
 };
-extern NullPrint *debugSerial;
-#endif
-
-void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
-
-void resetWithReason(String reason, bool restart);
-
-void uploadInfo(String prefix, String item, String value);
-void uploadInfo(String prefix, String item, float value);
-void uploadInfo(String item, String value);
-void uploadInfo(String item, float value);
-bool wifiIsConntected();
-void wifiDoSetup(String defaultName);
-
-void errLeds(void);
-
 extern const int CONNECT_TIMEOUT;
 extern const int DATA_TIMEOUT;
 extern const String STATUS_ITEM;
+extern const String STATUS_OK;
 
-#define WIFIBASE_H
-#endif
+extern const uint8_t MAJOR_VERSION;
+extern const uint8_t MINOR_VERSION;
+extern const uint8_t PATCH_VERSION;
+extern const String VERSION;
+
+extern HWBase hw;
+}
+
