@@ -1,12 +1,12 @@
 #pragma once
+#include "SHISensor.h"
 #include <Arduino.h>
 #include <AsyncUDP.h>
 #include <memory>
-#include "SHISensor.h"
 
 namespace SHI {
 
-struct config_t{
+struct config_t {
   uint32_t canary;
   uint32_t local_IP;
   uint32_t gateway;
@@ -17,37 +17,36 @@ struct config_t{
 extern config_t config;
 
 class HWBase {
+public:
+  String getConfigName();
+
+  void setupWatchdog();
+  void feedWatchdog();
+
+  void addSensor(SHI::Sensor &sensor);
+
+  void setDisplayBrightness(uint8_t value);
+
+  std::unique_ptr<Print> debugSerial;
+
+  void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
+
+  void resetWithReason(String reason, bool restart);
+  void errLeds(void);
+
+  void setup(String altName);
+  void loop();
+
+private:
+  void uploadInfo(String prefix, String item, String value);
+  bool wifiIsConntected();
+  void wifiDoSetup(String defaultName);
+  class NullPrint : public Print {
   public:
-    String getConfigName();
-
-    void setupWatchdog();
-    void feedWatchdog();
-
-    void addSensor(SHI::Sensor &sensor);
-
-    void setDisplayBrightness(uint8_t value);
-
-    std::unique_ptr<Print> debugSerial;
-
-    void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
-
-    void resetWithReason(String reason, bool restart);
-    void errLeds(void);
-
-    void setup(String altName);
-    void loop();
-
-  private:
-    void uploadInfo(String prefix, String item, String value);
-    bool wifiIsConntected();
-    void wifiDoSetup(String defaultName);
-    class NullPrint: public Print 
-    { 
-      public: 
-        NullPrint() {}
-        size_t write(uint8_t) {return 1;}
-        void begin(int baudRate) {}
-    };
+    NullPrint() {}
+    size_t write(uint8_t) { return 1; }
+    void begin(int baudRate) {}
+  };
 };
 extern const int CONNECT_TIMEOUT;
 extern const int DATA_TIMEOUT;
@@ -60,5 +59,4 @@ extern const uint8_t PATCH_VERSION;
 extern const String VERSION;
 
 extern HWBase hw;
-}
-
+} // namespace SHI

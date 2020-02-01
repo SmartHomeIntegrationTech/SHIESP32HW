@@ -7,8 +7,8 @@
 #include <Update.h>
 #include <WiFi.h>
 #include <map>
-#include <vector>
 #include <rom/rtc.h>
+#include <vector>
 
 PROGMEM const String RESET_SOURCE[] = {
     "NO_MEAN",          "POWERON_RESET",    "SW_RESET",
@@ -28,7 +28,7 @@ std::unique_ptr<Print> debugSerial(&Serial);
 #else
 NullPrint null_stream;
 std::unique_ptr<Print> debugSerial(&null_stream);
-#endif 
+#endif
 
 const char *ssid = "Elfenburg";
 const char *password = "fe-shnyed-olv-ek";
@@ -53,8 +53,8 @@ const uint8_t SHI::MAJOR_VERSION = VER_MAJ;
 const uint8_t SHI::MINOR_VERSION = VER_MIN;
 const uint8_t SHI::PATCH_VERSION = VER_PAT;
 const String SHI::VERSION = String(SHI::MAJOR_VERSION, 10) + "." +
-                       String(SHI::MINOR_VERSION, 10) + "." +
-                       String(SHI::PATCH_VERSION, 10);
+                            String(SHI::MINOR_VERSION, 10) + "." +
+                            String(SHI::PATCH_VERSION, 10);
 
 const char *CONFIG = "wifiConfig";
 const uint32_t CONST_MARKER = 0xAFFEDEAD;
@@ -70,9 +70,14 @@ const int wdtTimeout = 15000; // time in ms to trigger the watchdog
 hw_timer_t *timer = NULL;
 
 #ifdef HAS_DISPLAY
-  SSD1306Wire display = SSD1306Wire(0x3c, SDA_OLED, SCL_OLED, RST_OLED, GEOMETRY_128_64);
-  static String displayLineBuf[7]={"Temperatur:","n/a","Luftfeuchtigkeit:","n/a","Luftqualität:","n/a",""};
-  bool displayUpdated=false;
+SSD1306Wire display =
+    SSD1306Wire(0x3c, SDA_OLED, SCL_OLED, RST_OLED, GEOMETRY_128_64);
+static String displayLineBuf[7] = {
+    "Temperatur:", "n/a", 
+    "Luftfeuchtigkeit:", "n/a", 
+    "Luftqualität:", "n/a",
+    ""};
+bool displayUpdated = false;
 #endif
 
 void IRAM_ATTR resetModule() {
@@ -94,30 +99,27 @@ void SHI::HWBase::errLeds(void) {
   }
 }
 
-void SHI::HWBase::addSensor(SHI::Sensor &sensor) {
-  sensors.push_back(&sensor);
-}
+void SHI::HWBase::addSensor(SHI::Sensor &sensor) { sensors.push_back(&sensor); }
 
 void SHI::HWBase::loop() {
-  for (auto &&sensor : sensors)
-  {
-    auto result=sensor->readSensor();
+  for (auto &&sensor : sensors) {
+    auto result = sensor->readSensor();
+    auto sensorName = sensor->getName();
     feedWatchdog();
-    if (result==nullptr){
-      auto msg=sensor->getStatusMessage();
+    if (result == nullptr) {
+      auto msg = sensor->getStatusMessage();
       uploadInfo(getConfigName(), STATUS_ITEM, msg);
       feedWatchdog();
-      if (sensor->errorIsFatal()){
-        while (true)
-        {
+      if (sensor->errorIsFatal()) {
+        while (true) {
           errLeds();
         }
       }
     } else {
-      for (auto &&data : result->data)
-      {
+      for (auto &&data : result->data) {
         if (data->type != SHI::NO_DATA) {
-          uploadInfo(getConfigName(), data->name, data->toTransmitString(*data));
+          uploadInfo(getConfigName(), data->name + sensorName,
+                     data->toTransmitString(*data));
           feedWatchdog();
         }
       }
@@ -143,14 +145,14 @@ void printError(HTTPClient &http, int httpCode) {
   } else {
     errorCount++;
     debugSerial->printf("[HTTP] PUT... failed, error: %s\n",
-                  http.errorToString(httpCode).c_str());
+                        http.errorToString(httpCode).c_str());
   }
 }
 
-void SHI::HWBase::setDisplayBrightness(uint8_t value){
-  #ifdef HAS_DISPLAY
+void SHI::HWBase::setDisplayBrightness(uint8_t value) {
+#ifdef HAS_DISPLAY
   display.setBrightness(value);
-  #endif
+#endif
 }
 
 void SHI::HWBase::uploadInfo(String name, String item, String value) {
@@ -159,29 +161,29 @@ void SHI::HWBase::uploadInfo(String name, String item, String value) {
   if (item == STATUS_ITEM && value != STATUS_OK) {
     tryHard = true;
   }
-  #ifdef HAS_DISPLAY
+#ifdef HAS_DISPLAY
   if (item == STATUS_ITEM) {
-    displayLineBuf[6]=value;
-    displayUpdated=true;
+    displayLineBuf[6] = value;
+    displayUpdated = true;
   } else if (item == "Temperature") {
-    displayLineBuf[1]=value+"°C";
-    displayUpdated=true;
+    displayLineBuf[1] = value + "°C";
+    displayUpdated = true;
   } else if (item == "Humidity") {
-    displayLineBuf[3]=value+"%";
-    displayUpdated=true;
+    displayLineBuf[3] = value + "%";
+    displayUpdated = true;
   } else if (item == "StaticIaq") {
-    displayLineBuf[5]=value;
-    displayUpdated=true;
+    displayLineBuf[5] = value;
+    displayUpdated = true;
   } else if (item == "PM10") {
-    displayLineBuf[2]="PM10";
-    displayLineBuf[3]=value+"µg";
-    displayUpdated=true;
+    displayLineBuf[2] = "PM10";
+    displayLineBuf[3] = value + "µg";
+    displayUpdated = true;
   } else if (item == "PM2_5") {
-    displayLineBuf[0]="PM2.5";
-    displayLineBuf[1]=value+"µg";
-    displayUpdated=true;
+    displayLineBuf[0] = "PM2.5";
+    displayLineBuf[1] = value + "µg";
+    displayUpdated = true;
   }
-  #endif
+#endif
   int retryCount = 0;
   do {
     HTTPClient http;
@@ -242,10 +244,11 @@ bool updateHostName() {
     if (newName.length() == 0)
       return false;
     newName.toCharArray(SHI::config.name, sizeof(SHI::config.name));
-    debugSerial->printf("Recevied new Name:%s : %s\n", newName.c_str(), SHI::config.name);
+    debugSerial->printf("Recevied new Name:%s : %s\n", newName.c_str(),
+                        SHI::config.name);
     return true;
   } else {
-    debugSerial->println("Failed to update name for mac:"+mac);
+    debugSerial->println("Failed to update name for mac:" + mac);
   }
   return false;
 }
@@ -284,8 +287,8 @@ void infoHandler(AsyncUDPPacket &packet) {
                 "HttpCount:%d\n"
                 "ErrorCount:%d\n"
                 "HttpErrorCount:%d\n",
-                SHI::config.name, SHI::VERSION.c_str(), SHI::config.resetReason, millis(),
-                RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
+                SHI::config.name, SHI::VERSION.c_str(), SHI::config.resetReason,
+                millis(), RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
                 RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
                 WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str(),
                 httpCount, errorCount, httpErrorCount);
@@ -293,7 +296,8 @@ void infoHandler(AsyncUDPPacket &packet) {
 
 void versionHandler(AsyncUDPPacket &packet) {
   debugSerial->println("VERSION called");
-  packet.printf("OK VERSION:%s\nVersion:%s", SHI::config.name, SHI::VERSION.c_str());
+  packet.printf("OK VERSION:%s\nVersion:%s", SHI::config.name,
+                SHI::VERSION.c_str());
 }
 
 std::map<String, AuPacketHandlerFunction> registeredHandlers = {
@@ -303,7 +307,8 @@ std::map<String, AuPacketHandlerFunction> registeredHandlers = {
     {"INFO", infoHandler},
     {"VERSION", versionHandler}};
 
-void SHI::HWBase::addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler) {
+void SHI::HWBase::addUDPPacketHandler(String trigger,
+                                      AuPacketHandlerFunction handler) {
   registeredHandlers[trigger] = handler;
 }
 
@@ -324,17 +329,17 @@ void SHI::HWBase::setup(String defaultName) {
   IPAddress secondaryDNS(192, 168, 188, 1); // optional
   setupWatchdog();
   feedWatchdog();
-  #ifndef NO_SERIAL
-    reinterpret_cast<HardwareSerial*>(debugSerial.get())->begin(115200);
-  #endif
-  #ifdef HAS_DISPLAY
-    display.init();
-    display.flipScreenVertically();
-    display.setFont(ArialMT_Plain_10);
-    display.drawString(0, 0, "OLED initial done!");
-    display.display();
-    feedWatchdog();
-  #endif
+#ifndef NO_SERIAL
+  reinterpret_cast<HardwareSerial *>(debugSerial.get())->begin(115200);
+#endif
+#ifdef HAS_DISPLAY
+  display.init();
+  display.flipScreenVertically();
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(0, 0, "OLED initial done!");
+  display.display();
+  feedWatchdog();
+#endif
 
   configPrefs.begin(CONFIG);
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
@@ -342,8 +347,8 @@ void SHI::HWBase::setup(String defaultName) {
     debugSerial->println("Restoring config from memory");
     printConfig();
     WiFi.setHostname(SHI::config.name);
-    if (!WiFi.config(SHI::config.local_IP, SHI::config.gateway, SHI::config.subnet, primaryDNS,
-                     secondaryDNS)) {
+    if (!WiFi.config(SHI::config.local_IP, SHI::config.gateway,
+                     SHI::config.subnet, primaryDNS, secondaryDNS)) {
       debugSerial->println("STA Failed to configure");
     }
   } else {
@@ -389,15 +394,13 @@ void SHI::HWBase::setup(String defaultName) {
     udpMulticast.onPacket(handleUDPPacket);
   }
 
-  for (auto &&sensor : sensors)
-  {
-    String name=sensor->getName();
-    debugSerial->println("Setting up: "+name);
+  for (auto &&sensor : sensors) {
+    String name = sensor->getName();
+    debugSerial->println("Setting up: " + name);
     sensor->setupSensor();
     feedWatchdog();
-    debugSerial->println("Setup done of: "+name);
+    debugSerial->println("Setup done of: " + name);
   }
-  
 }
 
 void updateProgress(size_t a, size_t b) {
@@ -435,7 +438,8 @@ void startUpdate() {
       return;
     }
     if (!Update.begin(size)) {
-      udpMulticast.printf("ERR UPDATE:%s Abort, not enough space", SHI::config.name);
+      udpMulticast.printf("ERR UPDATE:%s Abort, not enough space",
+                          SHI::config.name);
       return;
     }
     Update.onProgress(updateProgress);
@@ -464,14 +468,14 @@ bool SHI::HWBase::wifiIsConntected() {
   while (WiFi.status() != WL_CONNECTED) {
     feedWatchdog();
     if (retryCount > 6) {
-      resetWithReason("Retry count for Wifi exceeded"+WiFi.status());
+      resetWithReason("Retry count for Wifi exceeded" + WiFi.status());
     }
     WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
     retryCount++;
-    delay(retryCount*1000);
+    delay(retryCount * 1000);
   }
   retryCount = 0;
   if (doUpdate) {
@@ -483,18 +487,18 @@ bool SHI::HWBase::wifiIsConntected() {
     }
     doUpdate = false;
   }
-  #ifdef HAS_DISPLAY
-    if (displayUpdated) {
-      display.clear();
-      for (int i=1;i<6;i+=2)
-        display.drawString(90,(i/2)*13, displayLineBuf[i]);
-      for (int i=0;i<6;i+=2)
-        display.drawString(0,(i/2)*13, displayLineBuf[i]);
-      display.drawStringMaxWidth(0,3*13, 128, displayLineBuf[6]);
-      display.display();
-      displayUpdated=false;
-    }
-  #endif
+#ifdef HAS_DISPLAY
+  if (displayUpdated) {
+    display.clear();
+    for (int i = 1; i < 6; i += 2)
+      display.drawString(90, (i / 2) * 13, displayLineBuf[i]);
+    for (int i = 0; i < 6; i += 2)
+      display.drawString(0, (i / 2) * 13, displayLineBuf[i]);
+    display.drawStringMaxWidth(0, 3 * 13, 128, displayLineBuf[6]);
+    display.display();
+    displayUpdated = false;
+  }
+#endif
   return true;
 }
 
