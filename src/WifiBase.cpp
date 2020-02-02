@@ -24,10 +24,22 @@ PROGMEM const String RESET_SOURCE[] = {
 #endif
 
 #ifndef NO_SERIAL
-std::unique_ptr<Print> debugSerial(&Serial);
+class HarwareSHIPrinter: public SHI::SHIPrinter {
+    void begin(int baudRate){
+      Serial.begin(baudRate);
+    };
+    size_t write(uint8_t data){
+      return Serial.write(data);
+    };
+};
+HarwareSHIPrinter shiSerial;
 #else
-NullPrint null_stream;
-std::unique_ptr<Print> debugSerial(&null_stream);
+class NullSHIPrinter : public SHI::SHIPrinter  {
+public:
+  size_t write(uint8_t) { return 1; }
+  void begin(int baudRate) {}
+};
+NullSHIPrinter shiSerial;
 #endif
 
 const char *ssid = "Elfenburg";
@@ -118,7 +130,7 @@ void SHI::HWBase::loop() {
     } else {
       for (auto &&data : result->data) {
         if (data->type != SHI::NO_DATA) {
-          uploadInfo(getConfigName(), data->name + sensorName,
+          uploadInfo(getConfigName(), sensorName+data->name,
                      data->toTransmitString(*data));
           feedWatchdog();
         }
@@ -135,16 +147,16 @@ void printError(HTTPClient &http, int httpCode) {
       httpErrorCount++;
     httpCount++;
     // HTTP header has been send and Server response header has been handled
-    debugSerial->printf("[HTTP] PUT... code: %d\n", httpCode);
+    SHI::hw.debugSerial->printf("[HTTP] PUT... code: %d\n", httpCode);
 
     // file found at server
     if (httpCode == HTTP_CODE_OK) {
       String payload = http.getString();
-      debugSerial->println(payload);
+      SHI::hw.debugSerial->println(payload);
     }
   } else {
     errorCount++;
-    debugSerial->printf("[HTTP] PUT... failed, error: %s\n",
+    SHI::hw.debugSerial->printf("[HTTP] PUT... failed, error: %s\n",
                         http.errorToString(httpCode).c_str());
   }
 }
@@ -221,12 +233,12 @@ void SHI::HWBase::resetWithReason(String reason, bool restart = true) {
 }
 
 void printConfig() {
-  debugSerial->printf("IP address:  %08X\n", SHI::config.local_IP);
-  debugSerial->printf("Subnet Mask: %08X\n", SHI::config.subnet);
-  debugSerial->printf("Gateway IP:  %08X\n", SHI::config.gateway);
-  debugSerial->printf("Canary:      %08X\n", SHI::config.canary);
-  debugSerial->printf("Name:        %-40s\n", SHI::config.name);
-  debugSerial->printf("Reset reason:%-40s\n", SHI::config.resetReason);
+  SHI::hw.debugSerial->printf("IP address:  %08X\n", SHI::config.local_IP);
+  SHI::hw.debugSerial->printf("Subnet Mask: %08X\n", SHI::config.subnet);
+  SHI::hw.debugSerial->printf("Gateway IP:  %08X\n", SHI::config.gateway);
+  SHI::hw.debugSerial->printf("Canary:      %08X\n", SHI::config.canary);
+  SHI::hw.debugSerial->printf("Name:        %-40s\n", SHI::config.name);
+  SHI::hw.debugSerial->printf("Reset reason:%-40s\n", SHI::config.resetReason);
 }
 
 bool updateHostName() {
@@ -244,30 +256,30 @@ bool updateHostName() {
     if (newName.length() == 0)
       return false;
     newName.toCharArray(SHI::config.name, sizeof(SHI::config.name));
-    debugSerial->printf("Recevied new Name:%s : %s\n", newName.c_str(),
+    SHI::hw.debugSerial->printf("Recevied new Name:%s : %s\n", newName.c_str(),
                         SHI::config.name);
     return true;
   } else {
-    debugSerial->println("Failed to update name for mac:" + mac);
+    SHI::hw.debugSerial->println("Failed to update name for mac:" + mac);
   }
   return false;
 }
 
 void updateHandler(AsyncUDPPacket &packet) {
-  debugSerial->println("UPDATE called");
+  SHI::hw.debugSerial->println("UPDATE called");
   packet.printf("OK UPDATE:%s", SHI::config.name);
   doUpdate = true;
 }
 
 void resetHandler(AsyncUDPPacket &packet) {
-  debugSerial->println("RESET called");
+  SHI::hw.debugSerial->println("RESET called");
   packet.printf("OK RESET:%s", SHI::config.name);
   packet.flush();
   SHI::hw.resetWithReason("UDP RESET request");
 }
 
 void reconfHandler(AsyncUDPPacket &packet) {
-  debugSerial->println("RECONF called");
+  SHI::hw.debugSerial->println("RECONF called");
   SHI::config.canary = 0xDEADBEEF;
   configPrefs.putBytes(CONFIG, &SHI::config, sizeof(SHI::config_t));
   packet.printf("OK RECONF:%s", SHI::config.name);
@@ -276,7 +288,7 @@ void reconfHandler(AsyncUDPPacket &packet) {
 }
 
 void infoHandler(AsyncUDPPacket &packet) {
-  debugSerial->println("INFO called");
+  SHI::hw.debugSerial->println("INFO called");
   packet.printf("OK INFO:%s\n"
                 "Version:%s\n"
                 "ResetReason:%s\n"
@@ -295,7 +307,7 @@ void infoHandler(AsyncUDPPacket &packet) {
 }
 
 void versionHandler(AsyncUDPPacket &packet) {
-  debugSerial->println("VERSION called");
+  SHI::hw.debugSerial->println("VERSION called");
   packet.printf("OK VERSION:%s\nVersion:%s", SHI::config.name,
                 SHI::VERSION.c_str());
 }
@@ -329,9 +341,15 @@ void SHI::HWBase::setup(String defaultName) {
   IPAddress secondaryDNS(192, 168, 188, 1); // optional
   setupWatchdog();
   feedWatchdog();
-#ifndef NO_SERIAL
-  reinterpret_cast<HardwareSerial *>(debugSerial.get())->begin(115200);
-#endif
+  debugSerial=&shiSerial;
+  ets_printf("Beginning serial\n");
+  Serial.begin(115200);
+  ets_printf("Setup serial done\n");
+  Serial.println("Hello World");
+  ets_printf("Hello World send via Serial.\n");
+  debugSerial->println("Hello World");
+  ets_printf("Hello World send via debugSerial->.\n");
+
 #ifdef HAS_DISPLAY
   display.init();
   display.flipScreenVertically();
@@ -340,7 +358,7 @@ void SHI::HWBase::setup(String defaultName) {
   display.display();
   feedWatchdog();
 #endif
-
+  ets_printf("Display done\n");
   configPrefs.begin(CONFIG);
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
   if (SHI::config.canary == CONST_MARKER) {
@@ -417,7 +435,7 @@ bool isUpdateAvailable() {
   int httpCode = http.GET();
   if (httpCode == 200) {
     String remoteVersion = http.getString();
-    debugSerial->println("Remote version is:" + remoteVersion);
+    SHI::hw.debugSerial->println("Remote version is:" + remoteVersion);
     return SHI::VERSION.compareTo(remoteVersion) < 0;
   }
   return false;

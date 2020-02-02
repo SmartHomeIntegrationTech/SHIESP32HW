@@ -16,6 +16,12 @@ struct config_t {
 };
 extern config_t config;
 
+class SHIPrinter: public Print {
+  public:
+    virtual void begin(int baudRate)=0;
+    virtual size_t write(uint8_t data)=0;
+};
+
 class HWBase {
 public:
   String getConfigName();
@@ -27,7 +33,7 @@ public:
 
   void setDisplayBrightness(uint8_t value);
 
-  std::unique_ptr<Print> debugSerial;
+  SHIPrinter *debugSerial;
 
   void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
 
@@ -41,12 +47,6 @@ private:
   void uploadInfo(String prefix, String item, String value);
   bool wifiIsConntected();
   void wifiDoSetup(String defaultName);
-  class NullPrint : public Print {
-  public:
-    NullPrint() {}
-    size_t write(uint8_t) { return 1; }
-    void begin(int baudRate) {}
-  };
 };
 extern const int CONNECT_TIMEOUT;
 extern const int DATA_TIMEOUT;
