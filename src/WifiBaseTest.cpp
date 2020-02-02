@@ -3,14 +3,12 @@
 
 class DummySensor : public SHI::Sensor {
 public:
-  virtual std::shared_ptr<SHI::SensorReadings> readSensor() { return reading; };
-  virtual bool setupSensor() {
+  DummySensor() : Sensor("Dummy") {}
+  std::shared_ptr<SHI::SensorReadings> readSensor() { return reading; };
+  bool setupSensor() {
     SHI::hw.debugSerial->println("Setup Dummy Sensor");
     return true;
   };
-  virtual String getStatusMessage() { return "OK"; };
-  virtual bool errorIsFatal() { return false; };
-  virtual String getName() { return "DummySensor"; };
   std::shared_ptr<SHI::SensorData> humidity = std::make_shared<SHI::SensorData>(
       new SHI::SensorData({SHI::FLOAT, SHI::FLOAT_TOSTRING, "Humidity"}));
   std::shared_ptr<SHI::SensorData> temperature =
@@ -20,7 +18,7 @@ public:
 private:
   std::shared_ptr<SHI::SensorReadings> reading =
       std::make_shared<SHI::SensorReadings>(
-          new SHI::SensorReadings({0, {humidity, temperature}}));
+          new SHI::SensorReadings({humidity, temperature}));
 };
 
 DummySensor dummy;

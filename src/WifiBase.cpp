@@ -48,25 +48,8 @@ const char *password = "fe-shnyed-olv-ek";
 AsyncUDP udpMulticast;
 const int SHI::CONNECT_TIMEOUT = 500;
 const int SHI::DATA_TIMEOUT = 1000;
-const String SHI::STATUS_ITEM = "Status";
-const String SHI::STATUS_OK = "OK";
-int errorCount = 0, httpErrorCount = 0, httpCount = 0;
 
-#ifndef VER_MAJ
-#error "Major version undefined"
-#endif
-#ifndef VER_MIN
-#error "Minor version undefined"
-#endif
-#ifndef VER_PAT
-#error "Patch version undefined"
-#endif
-const uint8_t SHI::MAJOR_VERSION = VER_MAJ;
-const uint8_t SHI::MINOR_VERSION = VER_MIN;
-const uint8_t SHI::PATCH_VERSION = VER_PAT;
-const String SHI::VERSION = String(SHI::MAJOR_VERSION, 10) + "." +
-                            String(SHI::MINOR_VERSION, 10) + "." +
-                            String(SHI::PATCH_VERSION, 10);
+int errorCount = 0, httpErrorCount = 0, httpCount = 0;
 
 const char *CONFIG = "wifiConfig";
 const uint32_t CONST_MARKER = 0xAFFEDEAD;

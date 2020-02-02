@@ -50,13 +50,6 @@ private:
 };
 extern const int CONNECT_TIMEOUT;
 extern const int DATA_TIMEOUT;
-extern const String STATUS_ITEM;
-extern const String STATUS_OK;
-
-extern const uint8_t MAJOR_VERSION;
-extern const uint8_t MINOR_VERSION;
-extern const uint8_t PATCH_VERSION;
-extern const String VERSION;
 
 extern HWBase hw;
 } // namespace SHI
