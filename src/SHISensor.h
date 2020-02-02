@@ -33,7 +33,7 @@ struct SensorReadings {
       : timeStamp(timeStamp), data(data) {}
   SensorReadings(SensorReadings *readings)
       : timeStamp(readings->timeStamp), data(readings->data) {}
-  unsigned long timeStamp;
+  unsigned long timeStamp=0;
   std::vector<std::shared_ptr<SHI::SensorData>> data;
 };
 
