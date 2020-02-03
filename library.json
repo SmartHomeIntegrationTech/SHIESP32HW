@@ -16,10 +16,10 @@
   "frameworks": "arduino",
   "platforms": "espressif32",
   "dependencies": {
-    "ESP32 Async UDP": "1.0.0",
     "WiFi": "1.0",
     "WiFiClientSecure": "1.0",
     "HTTPClient": "1.2",    
+    "ESP32 Async UDP": "1.0.0",    
     "Update": "1.0",
     "Preferences": "1.0",
     "Wire": "1.0.1"
