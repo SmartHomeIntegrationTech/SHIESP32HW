@@ -1,4 +1,4 @@
-#include "SHISensor.h"
+#include <SHISensor.h>
 #include <Arduino.h>
 namespace SHI {
 

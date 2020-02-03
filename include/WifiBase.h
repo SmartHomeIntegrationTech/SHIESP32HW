@@ -1,4 +1,4 @@
-#pragma once
+#ifndef _WifiBase_h
 #include "SHISensor.h"
 #include <Arduino.h>
 #include <AsyncUDP.h>
@@ -54,3 +54,5 @@ extern const int DATA_TIMEOUT;
 
 extern HWBase hw;
 } // namespace SHI
+#define _WifiBase_h
+#endif
