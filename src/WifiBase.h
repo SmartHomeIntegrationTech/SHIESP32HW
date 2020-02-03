@@ -29,7 +29,7 @@ public:
   void setupWatchdog();
   void feedWatchdog();
 
-  void addSensor(SHI::Sensor &sensor);
+  void addChannel(std::shared_ptr<SHI::Channel> channel);
 
   void setDisplayBrightness(uint8_t value);
 
@@ -47,6 +47,7 @@ private:
   void uploadInfo(String prefix, String item, String value);
   bool wifiIsConntected();
   void wifiDoSetup(String defaultName);
+  std::vector<std::shared_ptr<SHI::Channel>> channels;
 };
 extern const int CONNECT_TIMEOUT;
 extern const int DATA_TIMEOUT;

@@ -4,6 +4,7 @@
 class DummySensor : public SHI::Sensor {
 public:
   DummySensor() : Sensor("Dummy") {}
+
   std::shared_ptr<SHI::SensorReadings> readSensor() { return reading; };
   bool setupSensor() {
     SHI::hw.debugSerial->println("Setup Dummy Sensor");
@@ -20,18 +21,18 @@ private:
       std::make_shared<SHI::SensorReadings>(
           new SHI::SensorReadings({humidity, temperature}));
 };
-
-DummySensor dummy;
+std::shared_ptr<DummySensor> dummy=std::make_shared<DummySensor>();
+std::shared_ptr<SHI::Channel> channel=std::make_shared<SHI::Channel>(dummy, "OutsideChannel");
 
 void setup() {
-  SHI::hw.addSensor(dummy);
+  SHI::hw.addChannel(channel);
   SHI::hw.setup("Test");
-  dummy.humidity->floatValue = 10.4;
-  dummy.temperature->floatValue = 25;
+  dummy->humidity->floatValue = 10.4;
+  dummy->temperature->floatValue = 25;
 }
 void loop() {
   SHI::hw.loop();
-  dummy.humidity->floatValue += 1;
-  dummy.temperature->floatValue += 2.3;
+  dummy->humidity->floatValue += 1;
+  dummy->temperature->floatValue += 2.3;
   delay(1000);
 }

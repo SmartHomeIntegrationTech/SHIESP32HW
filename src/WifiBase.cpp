@@ -24,17 +24,13 @@ PROGMEM const String RESET_SOURCE[] = {
 #endif
 
 #ifndef NO_SERIAL
-class HarwareSHIPrinter: public SHI::SHIPrinter {
-    void begin(int baudRate){
-      Serial.begin(baudRate);
-    };
-    size_t write(uint8_t data){
-      return Serial.write(data);
-    };
+class HarwareSHIPrinter : public SHI::SHIPrinter {
+  void begin(int baudRate) { Serial.begin(baudRate); };
+  size_t write(uint8_t data) { return Serial.write(data); };
 };
 HarwareSHIPrinter shiSerial;
 #else
-class NullSHIPrinter : public SHI::SHIPrinter  {
+class NullSHIPrinter : public SHI::SHIPrinter {
 public:
   size_t write(uint8_t) { return 1; }
   void begin(int baudRate) {}
@@ -59,8 +55,6 @@ bool doUpdate = false;
 
 SHI::HWBase SHI::hw;
 
-std::vector<SHI::Sensor *> sensors;
-
 const int wdtTimeout = 15000; // time in ms to trigger the watchdog
 hw_timer_t *timer = NULL;
 
@@ -68,10 +62,8 @@ hw_timer_t *timer = NULL;
 SSD1306Wire display =
     SSD1306Wire(0x3c, SDA_OLED, SCL_OLED, RST_OLED, GEOMETRY_128_64);
 static String displayLineBuf[7] = {
-    "Temperatur:", "n/a", 
-    "Luftfeuchtigkeit:", "n/a", 
-    "Luftqualität:", "n/a",
-    ""};
+    "Temperatur:", "n/a", "Luftfeuchtigkeit:", "n/a", "Luftqualität:",
+    "n/a",         ""};
 bool displayUpdated = false;
 #endif
 
@@ -94,12 +86,16 @@ void SHI::HWBase::errLeds(void) {
   }
 }
 
-void SHI::HWBase::addSensor(SHI::Sensor &sensor) { sensors.push_back(&sensor); }
+void SHI::HWBase::addChannel(std::shared_ptr<SHI::Channel> channel) {
+  channels.push_back(channel);
+}
 
 void SHI::HWBase::loop() {
-  for (auto &&sensor : sensors) {
+  for (auto &&channel : channels) {
+    auto sensor = channel->sensor;
     auto result = sensor->readSensor();
     auto sensorName = sensor->getName();
+    auto channelName = channel->name;
     feedWatchdog();
     if (result == nullptr) {
       auto msg = sensor->getStatusMessage();
@@ -113,7 +109,7 @@ void SHI::HWBase::loop() {
     } else {
       for (auto &&data : result->data) {
         if (data->type != SHI::NO_DATA) {
-          uploadInfo(getConfigName(), sensorName+data->name,
+          uploadInfo(getConfigName(), channelName + sensorName + data->name,
                      data->toTransmitString(*data));
           feedWatchdog();
         }
@@ -140,7 +136,7 @@ void printError(HTTPClient &http, int httpCode) {
   } else {
     errorCount++;
     SHI::hw.debugSerial->printf("[HTTP] PUT... failed, error: %s\n",
-                        http.errorToString(httpCode).c_str());
+                                http.errorToString(httpCode).c_str());
   }
 }
 
@@ -240,7 +236,7 @@ bool updateHostName() {
       return false;
     newName.toCharArray(SHI::config.name, sizeof(SHI::config.name));
     SHI::hw.debugSerial->printf("Recevied new Name:%s : %s\n", newName.c_str(),
-                        SHI::config.name);
+                                SHI::config.name);
     return true;
   } else {
     SHI::hw.debugSerial->println("Failed to update name for mac:" + mac);
@@ -320,18 +316,12 @@ void handleUDPPacket(AsyncUDPPacket &packet) {
 String SHI::HWBase::getConfigName() { return String(SHI::config.name); }
 
 void SHI::HWBase::setup(String defaultName) {
-  IPAddress primaryDNS(192, 168, 188, 202); // optional
+  IPAddress primaryDNS(192, 168, 188, 250); // optional
   IPAddress secondaryDNS(192, 168, 188, 1); // optional
   setupWatchdog();
   feedWatchdog();
-  debugSerial=&shiSerial;
-  ets_printf("Beginning serial\n");
+  debugSerial = &shiSerial;
   Serial.begin(115200);
-  ets_printf("Setup serial done\n");
-  Serial.println("Hello World");
-  ets_printf("Hello World send via Serial.\n");
-  debugSerial->println("Hello World");
-  ets_printf("Hello World send via debugSerial->.\n");
 
 #ifdef HAS_DISPLAY
   display.init();
@@ -341,7 +331,6 @@ void SHI::HWBase::setup(String defaultName) {
   display.display();
   feedWatchdog();
 #endif
-  ets_printf("Display done\n");
   configPrefs.begin(CONFIG);
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
   if (SHI::config.canary == CONST_MARKER) {
@@ -395,10 +384,18 @@ void SHI::HWBase::setup(String defaultName) {
     udpMulticast.onPacket(handleUDPPacket);
   }
 
-  for (auto &&sensor : sensors) {
+  for (auto &&channel : channels) {
+    auto sensor = channel->sensor;
     String name = sensor->getName();
     debugSerial->println("Setting up: " + name);
-    sensor->setupSensor();
+    if (!sensor->setupSensor()) {
+      debugSerial->println(
+          "Something went wrong when setting up sensor:" + name +
+          channel->name + " " + sensor->getStatusMessage());
+      while (1) {
+        errLeds();
+      }
+    }
     feedWatchdog();
     debugSerial->println("Setup done of: " + name);
   }
