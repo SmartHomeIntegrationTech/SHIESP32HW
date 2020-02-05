@@ -4,25 +4,21 @@
 #include <AsyncUDP.h>
 #include <HTTPClient.h>
 #include <Preferences.h>
-#include <Update.h>
 #include <WiFi.h>
+#include <cstring>
 #include <map>
 #include <rom/rtc.h>
 #include <vector>
-
-PROGMEM const String RESET_SOURCE[] = {
-    "NO_MEAN",          "POWERON_RESET",    "SW_RESET",
-    "OWDT_RESET",       "DEEPSLEEP_RESET",  "SDIO_RESET",
-    "TG0WDT_SYS_RESET", "TG1WDT_SYS_RESET", "RTCWDT_SYS_RESET",
-    "INTRUSION_RESET",  "TGWDT_CPU_RESET",  "SW_CPU_RESET",
-    "RTCWDT_CPU_RESET", "EXT_CPU_RESET",    "RTCWDT_BROWN_OUT_RESET",
-    "RTCWDT_RTC_RESET"};
 
 #ifndef BUILTIN_LED
 #warning "Did not define BUILTIN_LED"
 #define BUILTIN_LED -1
 #endif
 
+SHI::HWBase SHI::hw;
+SHI::config_t SHI::config;
+
+namespace {
 #ifndef NO_SERIAL
 class HarwareSHIPrinter : public SHI::SHIPrinter {
   void begin(int baudRate) { Serial.begin(baudRate); };
@@ -38,18 +34,19 @@ public:
 NullSHIPrinter shiSerial;
 #endif
 
+PROGMEM const String RESET_SOURCE[] = {
+    "NO_MEAN",          "POWERON_RESET",    "SW_RESET",
+    "OWDT_RESET",       "DEEPSLEEP_RESET",  "SDIO_RESET",
+    "TG0WDT_SYS_RESET", "TG1WDT_SYS_RESET", "RTCWDT_SYS_RESET",
+    "INTRUSION_RESET",  "TGWDT_CPU_RESET",  "SW_CPU_RESET",
+    "RTCWDT_CPU_RESET", "EXT_CPU_RESET",    "RTCWDT_BROWN_OUT_RESET",
+    "RTCWDT_RTC_RESET"};
+
 const char *ssid = "Elfenburg";
 const char *password = "fe-shnyed-olv-ek";
 
-AsyncUDP udpMulticast;
-
 const char *CONFIG = "wifiConfig";
-const uint32_t CONST_MARKER = 0xAFFEDEAD;
-SHI::config_t SHI::config;
-Preferences configPrefs;
-bool doUpdate = false;
-
-SHI::HWBase SHI::hw;
+const uint32_t CONST_MARKER = 0xCAFEBABE;
 
 const int wdtTimeout = 15000; // time in ms to trigger the watchdog
 hw_timer_t *timer = NULL;
@@ -63,11 +60,16 @@ static String displayLineBuf[7] = {
 bool displayUpdated = false;
 #endif
 
+const int CONNECT_TIMEOUT = 500;
+const int DATA_TIMEOUT = 1000;
+
 void IRAM_ATTR resetModule() {
   ets_printf("Watchdog bit, reboot\n");
   SHI::hw.resetWithReason("Watchdog triggered", false);
   esp_restart();
 }
+
+} // namespace
 
 void SHI::HWBase::errLeds(void) {
   // Set pin mode
@@ -83,30 +85,55 @@ void SHI::HWBase::errLeds(void) {
 }
 
 void SHI::HWBase::loop() {
-  for (auto &&channel : channels) {
-    auto sensor = channel->sensor;
-    auto reading = sensor->readSensor();
-    if (reading == nullptr) {
-      auto status = sensor->getStatusMessage();
-      auto isFatal = sensor->errorIsFatal();
-      for (auto &&comm : communicators) {
-        comm->newStatus(*channel, status, isFatal);
-      }
-      if (isFatal) {
-        logError("ESP32", __func__,
-                 "Sensor " + channel->name + sensor->getName() +
-                     " reported error " + status);
+  feedWatchdog();
+  unsigned long start = millis();
+  if (wifiIsConntected()) {
+    for (auto &&channel : channels) {
+      auto sensor = channel->sensor;
+      auto reading = sensor->readSensor();
+      logInfo(name, __func__,
+              "Reading sensor:" + sensor->getName() +
+                  " on channel:" + channel->name);
+      if (reading == nullptr) {
+        auto status = sensor->getStatusMessage();
+        auto isFatal = sensor->errorIsFatal();
+        for (auto &&comm : communicators) {
+          comm->newStatus(*channel, status, isFatal);
+        }
+        if (isFatal) {
+          logError(name, __func__,
+                   "Sensor " + channel->name + sensor->getName() +
+                       " reported error " + status);
+        } else {
+          logWarn(name, __func__,
+                  "Sensor " + channel->name + sensor->getName() +
+                      " reported warning " + status);
+        }
       } else {
-        logWarn("ESP32", __func__,
-                "Sensor " + channel->name + sensor->getName() +
-                    " reported warning " + status);
-      }
-    } else {
-      for (auto &&comm : communicators) {
-        comm->newReading(*reading, *channel);
+        for (auto &&comm : communicators) {
+          comm->newReading(*reading, *channel);
+        }
       }
     }
+#ifdef HAS_DISPLAY
+    if (displayUpdated) {
+      display.clear();
+      for (int i = 1; i < 6; i += 2)
+        display.drawString(90, (i / 2) * 13, displayLineBuf[i]);
+      for (int i = 0; i < 6; i += 2)
+        display.drawString(0, (i / 2) * 13, displayLineBuf[i]);
+      display.drawStringMaxWidth(0, 3 * 13, 128, displayLineBuf[6]);
+      display.display();
+      displayUpdated = false;
+    }
+#endif
   }
+  for (auto &&comm : communicators) {
+    comm->loopCommunication();
+  }
+  int diff = millis() - start;
+  if (diff < 1000)
+    delay(diff);
 }
 
 void SHI::HWBase::setDisplayBrightness(uint8_t value) {
@@ -124,28 +151,28 @@ void SHI::HWBase::setupWatchdog() {
 
 void SHI::HWBase::disableWatchdog() { timerEnd(timer); }
 
-void SHI::HWBase::resetWithReason(String reason, bool restart = true) {
-  reason.toCharArray(SHI::config.resetReason, sizeof(SHI::config.resetReason));
+void SHI::HWBase::resetWithReason(const char *reason, bool restart = true) {
+  std::memcpy(SHI::config.resetReason, reason,
+              sizeof(SHI::config.resetReason) - 1);
   configPrefs.putBytes(CONFIG, &config, sizeof(SHI::config_t));
   if (restart) {
-    logInfo("ESP32", __func__, "Restarting:" + reason);
+    logInfo(name, __func__, "Restarting:" + String(reason));
     delay(100);
     ESP.restart();
   }
 }
 
 void SHI::HWBase::printConfig() {
-  SHI::hw.logInfo("ESP32", __func__,
+  SHI::hw.logInfo(name, __func__,
                   "IP address:  " + String(SHI::config.local_IP, 16));
-  SHI::hw.logInfo("ESP32", __func__,
+  SHI::hw.logInfo(name, __func__,
                   "Subnet Mask: " + String(SHI::config.subnet, 16));
-  SHI::hw.logInfo("ESP32", __func__,
+  SHI::hw.logInfo(name, __func__,
                   "Gateway IP:  " + String(SHI::config.gateway, 16));
-  SHI::hw.logInfo("ESP32", __func__,
+  SHI::hw.logInfo(name, __func__,
                   "Canary:      " + String(SHI::config.canary, 16));
-  SHI::hw.logInfo("ESP32", __func__,
-                  "Name:        " + String(SHI::config.name));
-  SHI::hw.logInfo("ESP32", __func__,
+  SHI::hw.logInfo(name, __func__, "Name:        " + String(SHI::config.name));
+  SHI::hw.logInfo(name, __func__,
                   "Reset reason:" + String(SHI::config.resetReason));
 }
 
@@ -154,8 +181,8 @@ bool SHI::HWBase::updateNodeName() {
   String mac = WiFi.macAddress();
   mac.replace(':', '_');
   http.begin("http://192.168.188.250/esp/" + mac);
-  http.setConnectTimeout(SHI::CONNECT_TIMEOUT);
-  http.setTimeout(SHI::DATA_TIMEOUT);
+  http.setConnectTimeout(CONNECT_TIMEOUT);
+  http.setTimeout(DATA_TIMEOUT);
   int httpCode = http.GET();
   if (httpCode == 200) {
     String newName = http.getString();
@@ -164,80 +191,35 @@ bool SHI::HWBase::updateNodeName() {
     if (newName.length() == 0)
       return false;
     newName.toCharArray(SHI::config.name, sizeof(SHI::config.name));
-    SHI::hw.logInfo("ESP32", __func__, "Recevied new Name:" + newName);
+    SHI::hw.logInfo(name, __func__, "Recevied new Name:" + newName);
     return true;
   } else {
-    SHI::hw.logInfo("ESP32", __func__, "Failed to update name for mac:" + mac);
+    SHI::hw.logInfo(name, __func__, "Failed to update name for mac:" + mac);
   }
   return false;
 }
 
-void updateHandler(AsyncUDPPacket &packet) {
-  SHI::hw.logInfo("ESP32", __func__, "UPDATE called");
-  packet.printf("OK UPDATE:%s", SHI::config.name);
-  doUpdate = true;
-}
+String SHI::HWBase::getNodeName() { return String(SHI::config.name); }
 
-void resetHandler(AsyncUDPPacket &packet) {
-  SHI::hw.logInfo("ESP32", __func__, "RESET called");
-  packet.printf("OK RESET:%s", SHI::config.name);
-  packet.flush();
-  SHI::hw.resetWithReason("UDP RESET request");
-}
-
-void reconfHandler(AsyncUDPPacket &packet) {
-  SHI::hw.logInfo("ESP32", __func__, "RECONF called");
-  SHI::config.canary = 0xDEADBEEF;
-  configPrefs.putBytes(CONFIG, &SHI::config, sizeof(SHI::config_t));
-  packet.printf("OK RECONF:%s", SHI::config.name);
-  packet.flush();
-  SHI::hw.resetWithReason("UDP RECONF request");
-}
-
-void infoHandler(AsyncUDPPacket &packet) {
-  SHI::hw.logInfo("ESP32", __func__, "INFO called");
-  packet.printf("OK INFO:%s\n"
-                "Version:%s\n"
-                "ResetReason:%s\n"
-                "RunTimeInMillis:%lu\n"
-                "ResetSource:%s:%s\n"
-                "LocalIP:%s\n"
-                "Mac:%s\n",
-                SHI::config.name, SHI::VERSION.c_str(), SHI::config.resetReason,
-                millis(), RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
-                RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
-                WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str());
-}
-
-void versionHandler(AsyncUDPPacket &packet) {
-  SHI::hw.logInfo("ESP32", __func__, "VERSION called");
-  packet.printf("OK VERSION:%s\nVersion:%s", SHI::config.name,
-                SHI::VERSION.c_str());
-}
-
-std::map<String, AuPacketHandlerFunction> registeredHandlers = {
-    {"UPDATE", updateHandler},
-    {"RECONF", reconfHandler},
-    {"RESET", resetHandler},
-    {"INFO", infoHandler},
-    {"VERSION", versionHandler}};
-
-void SHI::HWBase::addUDPPacketHandler(String trigger,
-                                      AuPacketHandlerFunction handler) {
-  registeredHandlers[trigger] = handler;
-}
-
-void handleUDPPacket(AsyncUDPPacket &packet) {
-  const char *data = (const char *)(packet.data());
-  if (packet.length() < 10) {
-    auto handler = registeredHandlers[String(data)];
-    if (handler != NULL) {
-      handler(packet);
-    }
+void SHI::HWBase::wifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
+  logInfo(name, __func__,
+          "WiFi lost connection. Reason: " + info.disconnected.reason);
+  for (auto &&comm : communicators) {
+    comm->wifiDisconnected();
   }
 }
 
-String SHI::HWBase::getNodeName() { return String(SHI::config.name); }
+void SHI::HWBase::wifiConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
+  logInfo(name, __func__, "Wifi connected");
+  for (auto &&comm : communicators) {
+    comm->wifiConnected();
+  }
+}
+
+void SHI::HWBase::resetConfig() {
+  config.canary = 0xDEADBEEF;
+  configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
+}
 
 void SHI::HWBase::setup(String defaultName) {
   IPAddress primaryDNS(192, 168, 188, 250); // optional
@@ -258,21 +240,37 @@ void SHI::HWBase::setup(String defaultName) {
   configPrefs.begin(CONFIG);
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
   if (SHI::config.canary == CONST_MARKER) {
-    logInfo("ESP32", __func__, "Restoring config from memory");
+    logInfo(name, __func__, "Restoring config from memory");
     printConfig();
     WiFi.setHostname(SHI::config.name);
     if (!WiFi.config(SHI::config.local_IP, SHI::config.gateway,
                      SHI::config.subnet, primaryDNS, secondaryDNS)) {
-      logInfo("ESP32", __func__, "STA Failed to configure");
+      logInfo(name, __func__, "STA Failed to configure");
     }
   } else {
-    debugSerial->printf("Canary mismatch, stored: %08X\n", SHI::config.canary);
+    logInfo(name, __func__,
+            "Canary mismatch, stored: " + String(SHI::config.canary, 16));
     defaultName.toCharArray(SHI::config.name, sizeof(SHI::config.name));
   }
 
-  debugSerial->print("Connecting to " + String(ssid));
+  logInfo(name, __func__, "Connecting to " + String(ssid));
 
   feedWatchdog();
+  WiFi.onEvent([this](WiFiEvent_t event, WiFiEventInfo_t info) {
+    logInfo(name, "Wifi", "Event:" + String(event) + " triggered");
+  });
+  WiFi.onEvent([this](WiFiEvent_t event,
+                      WiFiEventInfo_t info) { wifiDisconnected(event, info); },
+               SYSTEM_EVENT_STA_DISCONNECTED);
+  WiFi.onEvent([this](WiFiEvent_t event,
+                      WiFiEventInfo_t info) { wifiDisconnected(event, info); },
+               SYSTEM_EVENT_STA_LOST_IP);
+  WiFi.onEvent([this](WiFiEvent_t event,
+                      WiFiEventInfo_t info) { wifiConnected(event, info); },
+               SYSTEM_EVENT_STA_CONNECTED);
+  WiFi.onEvent([this](WiFiEvent_t event,
+                      WiFiEventInfo_t info) { wifiConnected(event, info); },
+               SYSTEM_EVENT_STA_GOT_IP);
   WiFi.begin(ssid, password);
 
   int connectCount = 0;
@@ -281,13 +279,13 @@ void SHI::HWBase::setup(String defaultName) {
       ESP.restart();
     }
     delay(500);
-    debugSerial->print(".");
+    logInfo(name, __func__, ".");
     connectCount++;
   }
   feedWatchdog();
-  logInfo("ESP32", __func__, "WiFi connected!");
+  logInfo(name, __func__, "WiFi connected!");
   if (SHI::config.canary != CONST_MARKER && updateNodeName()) {
-    logInfo("ESP32", __func__, "Storing config");
+    logInfo(name, __func__, "Storing config");
     SHI::config.local_IP = WiFi.localIP();
     SHI::config.gateway = WiFi.gatewayIP();
     SHI::config.subnet = WiFi.subnetMask();
@@ -296,7 +294,7 @@ void SHI::HWBase::setup(String defaultName) {
     resetWithReason("Fresh-reset", false);
     SHI::config.canary = CONST_MARKER;
     configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
-    logInfo("ESP32", __func__, "ESP Mac Address: " + WiFi.macAddress());
+    logInfo(name, __func__, "ESP Mac Address: " + WiFi.macAddress());
     printConfig();
   }
   auto hwStatus = "STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
@@ -306,16 +304,17 @@ void SHI::HWBase::setup(String defaultName) {
     comm->newHardwareStatus(hwStatus);
   }
   feedWatchdog();
-  if (udpMulticast.listenMulticast(IPAddress(239, 1, 23, 42), 2323)) {
-    udpMulticast.onPacket(handleUDPPacket);
+
+  for (auto &&comm : communicators) {
+    comm->setupCommunication();
   }
 
   for (auto &&channel : channels) {
     auto sensor = channel->sensor;
     String name = sensor->getName();
-    logInfo("ESP32", __func__, "Setting up: " + name);
+    logInfo(name, __func__, "Setting up: " + name);
     if (!sensor->setupSensor()) {
-      logInfo("ESP32", __func__,
+      logInfo(name, __func__,
               "Something went wrong when setting up sensor:" + name +
                   channel->name + " " + sensor->getStatusMessage());
       while (1) {
@@ -323,68 +322,8 @@ void SHI::HWBase::setup(String defaultName) {
       }
     }
     feedWatchdog();
-    logInfo("ESP32", __func__, "Setup done of: " + name);
+    logInfo(name, __func__, "Setup done of: " + name);
   }
-}
-
-void updateProgress(size_t a, size_t b) {
-  udpMulticast.printf("OK UPDATE:%s %u/%u", SHI::config.name, a, b);
-  SHI::hw.feedWatchdog();
-}
-
-bool isUpdateAvailable() {
-  HTTPClient http;
-  http.begin("http://192.168.188.250/esp/firmware/" + String(SHI::config.name) +
-             ".version");
-  http.setConnectTimeout(SHI::CONNECT_TIMEOUT);
-  http.setTimeout(SHI::DATA_TIMEOUT);
-  int httpCode = http.GET();
-  if (httpCode == 200) {
-    String remoteVersion = http.getString();
-    SHI::hw.logInfo("ESP32", __func__, "Remote version is:" + remoteVersion);
-    return SHI::VERSION.compareTo(remoteVersion) < 0;
-  }
-  return false;
-}
-
-void startUpdate() {
-  HTTPClient http;
-  http.begin("http://192.168.188.250/esp/firmware/" + String(SHI::config.name) +
-             ".bin");
-  http.setConnectTimeout(SHI::CONNECT_TIMEOUT);
-  http.setTimeout(SHI::DATA_TIMEOUT);
-  int httpCode = http.GET();
-  if (httpCode == 200) {
-    udpMulticast.printf("OK UPDATE:%s Starting", SHI::config.name);
-    int size = http.getSize();
-    if (size < 0) {
-      udpMulticast.printf("ERR UPDATE:%s Abort, no size", SHI::config.name);
-      return;
-    }
-    if (!Update.begin(size)) {
-      udpMulticast.printf("ERR UPDATE:%s Abort, not enough space",
-                          SHI::config.name);
-      return;
-    }
-    Update.onProgress(updateProgress);
-    size_t written = Update.writeStream(http.getStream());
-    if (written == size) {
-      udpMulticast.printf("OK UPDATE:%s Finishing", SHI::config.name);
-      if (!Update.end()) {
-        udpMulticast.printf("ERR UPDATE:%s Abort finish failed: %u",
-                            SHI::config.name, Update.getError());
-      } else {
-        udpMulticast.printf("OK UPDATE:%s Finished", SHI::config.name);
-      }
-    } else {
-      udpMulticast.printf("ERR UPDATE:%s Abort, written:%d size:%d",
-                          SHI::config.name, written, size);
-    }
-    SHI::config.canary = 0xDEADBEEF;
-    configPrefs.putBytes(CONFIG, &SHI::config, sizeof(SHI::config_t));
-    SHI::hw.resetWithReason("Firmware updated");
-  }
-  http.end();
 }
 
 void SHI::HWBase::log(String msg) { debugSerial->println(msg); }
@@ -404,27 +343,6 @@ bool SHI::HWBase::wifiIsConntected() {
     delay(retryCount * 1000);
   }
   retryCount = 0;
-  if (doUpdate) {
-    if (isUpdateAvailable()) {
-      startUpdate();
-    } else {
-      logInfo("ESP32", __func__, "No newer version available");
-      udpMulticast.printf("OK UPDATE:%s No update available", SHI::config.name);
-    }
-    doUpdate = false;
-  }
-#ifdef HAS_DISPLAY
-  if (displayUpdated) {
-    display.clear();
-    for (int i = 1; i < 6; i += 2)
-      display.drawString(90, (i / 2) * 13, displayLineBuf[i]);
-    for (int i = 0; i < 6; i += 2)
-      display.drawString(0, (i / 2) * 13, displayLineBuf[i]);
-    display.drawStringMaxWidth(0, 3 * 13, 128, displayLineBuf[6]);
-    display.display();
-    displayUpdated = false;
-  }
-#endif
   return true;
 }
 

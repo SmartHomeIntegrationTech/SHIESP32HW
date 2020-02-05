@@ -1,12 +1,18 @@
 #include "SHIRestCommunicator.h"
 #include "SHISensor.h"
 #include "WifiBase.h"
+#include <Arduino.h>
 #include <HTTPClient.h>
 
-const int SHI::CONNECT_TIMEOUT = 500;
-const int SHI::DATA_TIMEOUT = 1000;
+namespace {
+
+const int CONNECT_TIMEOUT = 500;
+const int DATA_TIMEOUT = 1000;
 const String STATUS_ITEM = "Status";
 const String STATUS_OK = "OK";
+const String OHREST = "OpenhabRest";
+
+} // namespace
 
 void SHI::SHIRestCommunicator::newReading(SHI::SensorReadings &reading,
                                           SHI::Channel &channel) {
@@ -23,13 +29,21 @@ void SHI::SHIRestCommunicator::newReading(SHI::SensorReadings &reading,
       SHI::hw.feedWatchdog();
     }
   }
-  uploadInfo(SHI::hw.getNodeName() + channelName + channel.sensor->getName(), STATUS_ITEM, STATUS_OK);
+  uploadInfo(SHI::hw.getNodeName() + channelName + channel.sensor->getName(),
+             STATUS_ITEM, STATUS_OK);
 }
 
-void SHI::SHIRestCommunicator::newStatus(SHI::Channel &channel, String message, bool isFatal) {
-  if (!isCurrentlyConnected)
+void SHI::SHIRestCommunicator::newStatus(SHI::Channel &channel, String message,
+                                         bool isFatal) {
+  if (!isCurrentlyConnected) {
+    SHI::hw.logInfo(name, __func__,
+                    "Not uploading: " + channel.name +
+                        channel.sensor->getName() +
+                        " as currently not connected");
     return;
-  uploadInfo(SHI::hw.getNodeName() + channel.name + channel.sensor->getName(), STATUS_ITEM, message);
+  }
+  uploadInfo(SHI::hw.getNodeName() + channel.name + channel.sensor->getName(),
+             STATUS_ITEM, message);
 }
 
 void SHI::SHIRestCommunicator::newHardwareStatus(String message) {
@@ -38,7 +52,7 @@ void SHI::SHIRestCommunicator::newHardwareStatus(String message) {
 
 void SHI::SHIRestCommunicator::uploadInfo(String name, String item,
                                           String value) {
-  SHI::hw.logInfo("OpenhabRest", __func__, name + " " + item + " " + value);
+  SHI::hw.logInfo(name, __func__, name + " " + item + " " + value);
   bool tryHard = false;
   if (item == STATUS_ITEM && value != STATUS_OK) {
     tryHard = true;
@@ -67,15 +81,16 @@ void SHI::SHIRestCommunicator::printError(HTTPClient &http, int httpCode) {
       httpErrorCount++;
     httpCount++;
     // HTTP header has been send and Server response header has been handled
-    SHI::hw.logInfo("OpenhabRest", __func__, "response:" + httpCode);
+    SHI::hw.logInfo(name, __func__, "response:" + httpCode);
 
     if (httpCode == HTTP_CODE_OK) {
       String payload = http.getString();
-      SHI::hw.logInfo("OpenhabRest", __func__, payload);
+      if (!payload.isEmpty())
+        SHI::hw.logInfo(name, __func__, "Response payload was:" + payload);
     }
   } else {
     errorCount++;
-    SHI::hw.logError("OpenhabRest", __func__,
-                     "failed " + http.errorToString(httpCode));
+    // ets_printf(http.errorToString(httpCode).c_str());
+    SHI::hw.logInfo(name, __func__, "Failed " + httpCode);
   }
 }
