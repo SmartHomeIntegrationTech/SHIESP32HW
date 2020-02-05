@@ -62,8 +62,8 @@ private:
   bool wifiIsConntected();
   void wifiDoSetup(String defaultName);
   bool updateNodeName();
-  void wifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info);
-  void wifiConnected(WiFiEvent_t event, WiFiEventInfo_t info);
+  void wifiDisconnected(WiFiEventInfo_t info);
+  void wifiConnected();
   std::vector<std::shared_ptr<SHI::Channel>> channels;
   std::vector<std::shared_ptr<SHI::SHICommunicator>> communicators;
   SHIPrinter *debugSerial;

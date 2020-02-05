@@ -201,7 +201,7 @@ bool SHI::HWBase::updateNodeName() {
 
 String SHI::HWBase::getNodeName() { return String(SHI::config.name); }
 
-void SHI::HWBase::wifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
+void SHI::HWBase::wifiDisconnected(WiFiEventInfo_t info) {
   logInfo(name, __func__,
           "WiFi lost connection. Reason: " + info.disconnected.reason);
   for (auto &&comm : communicators) {
@@ -209,7 +209,7 @@ void SHI::HWBase::wifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
   }
 }
 
-void SHI::HWBase::wifiConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
+void SHI::HWBase::wifiConnected() {
   logInfo(name, __func__, "Wifi connected");
   for (auto &&comm : communicators) {
     comm->wifiConnected();
@@ -260,17 +260,17 @@ void SHI::HWBase::setup(String defaultName) {
     logInfo(name, "Wifi", "Event:" + String(event) + " triggered");
   });
   WiFi.onEvent([this](WiFiEvent_t event,
-                      WiFiEventInfo_t info) { wifiDisconnected(event, info); },
+                      WiFiEventInfo_t info) { wifiDisconnected(info); },
                SYSTEM_EVENT_STA_DISCONNECTED);
   WiFi.onEvent([this](WiFiEvent_t event,
-                      WiFiEventInfo_t info) { wifiDisconnected(event, info); },
+                      WiFiEventInfo_t info) { wifiDisconnected(info); },
                SYSTEM_EVENT_STA_LOST_IP);
-  WiFi.onEvent([this](WiFiEvent_t event,
-                      WiFiEventInfo_t info) { wifiConnected(event, info); },
-               SYSTEM_EVENT_STA_CONNECTED);
-  WiFi.onEvent([this](WiFiEvent_t event,
-                      WiFiEventInfo_t info) { wifiConnected(event, info); },
-               SYSTEM_EVENT_STA_GOT_IP);
+  WiFi.onEvent(
+      [this](WiFiEvent_t event, WiFiEventInfo_t info) { wifiConnected(); },
+      SYSTEM_EVENT_STA_CONNECTED);
+  WiFi.onEvent(
+      [this](WiFiEvent_t event, WiFiEventInfo_t info) { wifiConnected(); },
+      SYSTEM_EVENT_STA_GOT_IP);
   WiFi.begin(ssid, password);
 
   int connectCount = 0;
@@ -283,7 +283,7 @@ void SHI::HWBase::setup(String defaultName) {
     connectCount++;
   }
   feedWatchdog();
-  logInfo(name, __func__, "WiFi connected!");
+  wifiConnected();
   if (SHI::config.canary != CONST_MARKER && updateNodeName()) {
     logInfo(name, __func__, "Storing config");
     SHI::config.local_IP = WiFi.localIP();
@@ -300,14 +300,12 @@ void SHI::HWBase::setup(String defaultName) {
   auto hwStatus = "STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
                   RESET_SOURCE[rtc_get_reset_reason(1)] + " " +
                   String(SHI::config.resetReason);
-  for (auto &&comm : communicators) {
-    comm->newHardwareStatus(hwStatus);
-  }
-  feedWatchdog();
 
   for (auto &&comm : communicators) {
     comm->setupCommunication();
+    comm->newHardwareStatus(hwStatus);
   }
+  feedWatchdog();
 
   for (auto &&channel : channels) {
     auto sensor = channel->sensor;
