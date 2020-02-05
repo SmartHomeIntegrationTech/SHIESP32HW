@@ -11,7 +11,7 @@ class SHICommunicator {
     virtual void loopCommunication()=0;
     virtual void newReading(SHI::SensorReadings &reading, SHI::Channel &channel)=0;
     virtual void newStatus(SHI::Channel &channel, String message, bool isFatal)=0;
-    virtual void newHardwareStatus(String message);
+    virtual void newHardwareStatus(String message)=0;
   protected:
     SHICommunicator(String name) : name(name) {};
     String name;

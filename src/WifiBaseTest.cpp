@@ -24,7 +24,7 @@ private:
 };
 std::shared_ptr<DummySensor> dummy=std::make_shared<DummySensor>();
 std::shared_ptr<SHI::Channel> channel=std::make_shared<SHI::Channel>(dummy, "OutsideChannel");
-std::shared_ptr<SHI::SHICommunicator> comms=std::make_shared<SHI::SHIRestCommunicator>();
+std::shared_ptr<SHI::SHIRestCommunicator> comms=std::make_shared<SHI::SHIRestCommunicator>();
 
 void setup() {
   SHI::hw.addCommunicator(comms);

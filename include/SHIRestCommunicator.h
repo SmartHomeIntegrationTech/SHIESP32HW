@@ -18,7 +18,7 @@ public:
   void newHardwareStatus(String message);
 
 protected:
-  bool isCurrentlyConnected;
+  bool isCurrentlyConnected=false;
   int errorCount = 0, httpErrorCount = 0, httpCount = 0;
 
 private:
