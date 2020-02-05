@@ -1,5 +1,7 @@
-#ifndef _WifiBase_h
+#pragma once
 #include "SHISensor.h"
+#include "SHIHardware.h"
+#include "SHICommunicator.h"
 #include <Arduino.h>
 #include <AsyncUDP.h>
 #include <memory>
@@ -22,18 +24,23 @@ class SHIPrinter: public Print {
     virtual size_t write(uint8_t data)=0;
 };
 
-class HWBase {
+class HWBase : public SHI::SHIHardware {
 public:
-  String getConfigName();
+
+  String getNodeName();
 
   void setupWatchdog();
   void feedWatchdog();
-
-  void addChannel(std::shared_ptr<SHI::Channel> channel);
+  void disableWatchdog();
 
   void setDisplayBrightness(uint8_t value);
 
-  SHIPrinter *debugSerial;
+  void addChannel(std::shared_ptr<SHI::Channel> channel) {
+    channels.push_back(channel);
+  }
+  void addCommunicator(std::shared_ptr<SHI::SHICommunicator> communicator) {
+    communicators.push_back(communicator);
+  }
 
   void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
 
@@ -42,17 +49,23 @@ public:
 
   void setup(String altName);
   void loop();
+  void printConfig();
+
+protected:
+  void log(String message);
 
 private:
   void uploadInfo(String prefix, String item, String value);
   bool wifiIsConntected();
   void wifiDoSetup(String defaultName);
+  bool updateNodeName();
   std::vector<std::shared_ptr<SHI::Channel>> channels;
+  std::vector<std::shared_ptr<SHI::SHICommunicator>> communicators;
+  SHIPrinter *debugSerial;
 };
+
 extern const int CONNECT_TIMEOUT;
 extern const int DATA_TIMEOUT;
 
 extern HWBase hw;
 } // namespace SHI
-#define _WifiBase_h
-#endif

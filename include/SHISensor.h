@@ -1,4 +1,4 @@
-#ifndef _SHISensor_h
+#pragma once
 #include <Arduino.h>
 #include <functional>
 #include <memory>
@@ -16,7 +16,7 @@ extern const uint8_t MINOR_VERSION;
 extern const uint8_t PATCH_VERSION;
 extern const String VERSION;
 
-enum SensorDataType { INT, FLOAT, STRING, NO_DATA };
+enum class SensorDataType { INT, FLOAT, STRING, NO_DATA };
 
 struct SensorData {
   SensorData(SensorDataType type,
@@ -74,6 +74,3 @@ String INT_TOSTRING(SHI::SensorData &data);
 String STRING_TOSTRING(SHI::SensorData &data);
 
 } // namespace SHI
-
-#define _SHISensor_h
-#endif

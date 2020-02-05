@@ -26,7 +26,7 @@ const String VERSION = String(MAJOR_VERSION, 10) + "." +
                        String(MINOR_VERSION, 10) + "." +
                        String(PATCH_VERSION, 10);
 
-const String STATUS_ITEM = "Status";
-const String STATUS_OK = "OK";
+const String STATUS_ITEM="Status";
+const String STATUS_OK="OK";
 
 } // namespace SHI
