@@ -1,6 +1,7 @@
 #include "WifiBase.h"
 #include <Arduino.h>
 #include <SHIMulticastHandler.h>
+#include <SHIOLEDDisplay.h>
 #include <SHIRestCommunicator.h>
 
 class DummySensor : public SHI::Sensor {
@@ -34,10 +35,17 @@ std::shared_ptr<SHI::SHIRestCommunicator> comms =
     std::make_shared<SHI::SHIRestCommunicator>();
 std::shared_ptr<SHI::SHIMulticastHandler> multicastComms =
     std::make_shared<SHI::SHIMulticastHandler>();
+std::shared_ptr<SHI::SHIOLEDDisplay> oled =
+    std::make_shared<SHI::SHIOLEDDisplay>("DummyHumidity", "DummyTemperature",
+                                          "");
 
 void setup() {
   SHI::hw.addCommunicator(comms);
   SHI::hw.addCommunicator(multicastComms);
+#ifdef HAS_DISPLAY  
+  SHI::hw.addCommunicator(oled);
+#endif  
+  oled->setBrightness(5);
   SHI::hw.addChannel(channel);
   SHI::hw.setup("Test");
   dummy->humidity->floatValue = 10.4;

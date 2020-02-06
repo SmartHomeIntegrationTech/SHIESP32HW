@@ -7,24 +7,18 @@ namespace SHI {
 class SHIMulticastHandler : public SHI::SHICommunicator {
 public:
   SHIMulticastHandler() : SHICommunicator("Multicast") {
-    AuPacketHandlerFunction updateFunc = std::bind(
-        &SHIMulticastHandler::updateHandler, this, std::placeholders::_1);
-    registeredHandlers.insert({"UPDATE", updateFunc});
-    AuPacketHandlerFunction resetFunc = std::bind(
-        &SHIMulticastHandler::resetHandler, this, std::placeholders::_1);
-    registeredHandlers.insert({"RESET", resetFunc});
-    AuPacketHandlerFunction reconfFunc = std::bind(
-        &SHIMulticastHandler::reconfHandler, this, std::placeholders::_1);
-    registeredHandlers.insert({"RECONF", reconfFunc});
-    AuPacketHandlerFunction infoFunc = std::bind(
-        &SHIMulticastHandler::infoHandler, this, std::placeholders::_1);
-    registeredHandlers.insert({"INFO", infoFunc});
-    AuPacketHandlerFunction versionFunc = std::bind(
-        &SHIMulticastHandler::versionHandler, this, std::placeholders::_1);
-    registeredHandlers.insert({"VERSION", versionFunc});
+    registeredHandlers.insert(
+        {"UPDATE", [this](AsyncUDPPacket &packet) { updateHandler(packet); }});
+    registeredHandlers.insert(
+        {"RESET", [this](AsyncUDPPacket &packet) { resetHandler(packet); }});
+    registeredHandlers.insert(
+        {"RECONF", [this](AsyncUDPPacket &packet) { reconfHandler(packet); }});
+    registeredHandlers.insert(
+        {"INFO", [this](AsyncUDPPacket &packet) { infoHandler(packet); }});
+    registeredHandlers.insert({"VERSION", [this](AsyncUDPPacket &packet) {
+                                 versionHandler(packet);
+                               }});
   }
-  void wifiConnected(){};
-  void wifiDisconnected(){};
   void setupCommunication();
   void loopCommunication();
   void newReading(SHI::SensorReadings &reading, SHI::Channel &channel){};

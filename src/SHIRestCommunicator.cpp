@@ -16,7 +16,7 @@ const String OHREST = "OpenhabRest";
 
 void SHI::SHIRestCommunicator::newReading(SHI::SensorReadings &reading,
                                           SHI::Channel &channel) {
-  if (!isCurrentlyConnected)
+  if (!isConnected)
     return;
   auto sensor = channel.sensor;
   auto sensorName = sensor->getName();
@@ -35,7 +35,7 @@ void SHI::SHIRestCommunicator::newReading(SHI::SensorReadings &reading,
 
 void SHI::SHIRestCommunicator::newStatus(SHI::Channel &channel, String message,
                                          bool isFatal) {
-  if (!isCurrentlyConnected) {
+  if (!isConnected) {
     SHI::hw.logInfo(name, __func__,
                     "Not uploading: " + channel.name +
                         channel.sensor->getName() +

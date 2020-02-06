@@ -138,7 +138,7 @@ void SHI::SHIMulticastHandler::infoHandler(AsyncUDPPacket &packet) {
                 "LocalIP:%s\n"
                 "Mac:%s\n",
                 SHI::hw.getNodeName().c_str(), SHI::VERSION.c_str(),
-                SHI::config.resetReason, millis(),
+                SHI::hw.getResetReason().c_str(), millis(),
                 RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
                 RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
                 WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str());

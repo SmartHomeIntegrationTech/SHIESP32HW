@@ -1,5 +1,4 @@
 #include "WifiBase.h"
-#include "oled/SSD1306Wire.h"
 #include <Arduino.h>
 #include <AsyncUDP.h>
 #include <HTTPClient.h>
@@ -16,7 +15,6 @@
 #endif
 
 SHI::HWBase SHI::hw;
-SHI::config_t SHI::config;
 
 namespace {
 #ifndef NO_SERIAL
@@ -44,21 +42,10 @@ PROGMEM const String RESET_SOURCE[] = {
 
 const char *ssid = "Elfenburg";
 const char *password = "fe-shnyed-olv-ek";
-
 const char *CONFIG = "wifiConfig";
 const uint32_t CONST_MARKER = 0xCAFEBABE;
 
 const int wdtTimeout = 15000; // time in ms to trigger the watchdog
-hw_timer_t *timer = NULL;
-
-#ifdef HAS_DISPLAY
-SSD1306Wire display =
-    SSD1306Wire(0x3c, SDA_OLED, SCL_OLED, RST_OLED, GEOMETRY_128_64);
-static String displayLineBuf[7] = {
-    "Temperatur:", "n/a", "Luftfeuchtigkeit:", "n/a", "Luftqualität:",
-    "n/a",         ""};
-bool displayUpdated = false;
-#endif
 
 const int CONNECT_TIMEOUT = 500;
 const int DATA_TIMEOUT = 1000;
@@ -87,6 +74,7 @@ void SHI::HWBase::errLeds(void) {
 void SHI::HWBase::loop() {
   feedWatchdog();
   unsigned long start = millis();
+  bool sensorHasFatalError=false;
   if (wifiIsConntected()) {
     for (auto &&channel : channels) {
       auto sensor = channel->sensor;
@@ -101,6 +89,7 @@ void SHI::HWBase::loop() {
           comm->newStatus(*channel, status, isFatal);
         }
         if (isFatal) {
+          sensorHasFatalError=true;
           logError(name, __func__,
                    "Sensor " + channel->name + sensor->getName() +
                        " reported error " + status);
@@ -115,31 +104,16 @@ void SHI::HWBase::loop() {
         }
       }
     }
-#ifdef HAS_DISPLAY
-    if (displayUpdated) {
-      display.clear();
-      for (int i = 1; i < 6; i += 2)
-        display.drawString(90, (i / 2) * 13, displayLineBuf[i]);
-      for (int i = 0; i < 6; i += 2)
-        display.drawString(0, (i / 2) * 13, displayLineBuf[i]);
-      display.drawStringMaxWidth(0, 3 * 13, 128, displayLineBuf[6]);
-      display.display();
-      displayUpdated = false;
-    }
-#endif
   }
   for (auto &&comm : communicators) {
     comm->loopCommunication();
   }
+  while (sensorHasFatalError) {
+    errLeds();
+  }
   int diff = millis() - start;
   if (diff < 1000)
     delay(diff);
-}
-
-void SHI::HWBase::setDisplayBrightness(uint8_t value) {
-#ifdef HAS_DISPLAY
-  display.setBrightness(value);
-#endif
 }
 
 void SHI::HWBase::setupWatchdog() {
@@ -149,12 +123,20 @@ void SHI::HWBase::setupWatchdog() {
   timerAlarmEnable(timer);
 }
 
+void SHI::HWBase::feedWatchdog() {
+  timerWrite(timer, 0); // reset timer (feed watchdog)
+}
+
 void SHI::HWBase::disableWatchdog() { timerEnd(timer); }
 
+String SHI::HWBase::getResetReason() {
+  return String(config.resetReason);
+}
+
 void SHI::HWBase::resetWithReason(const char *reason, bool restart = true) {
-  std::memcpy(SHI::config.resetReason, reason,
-              sizeof(SHI::config.resetReason) - 1);
-  configPrefs.putBytes(CONFIG, &config, sizeof(SHI::config_t));
+  std::memcpy(config.resetReason, reason,
+              sizeof(config.resetReason) - 1);
+  configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
   if (restart) {
     logInfo(name, __func__, "Restarting:" + String(reason));
     delay(100);
@@ -162,18 +144,23 @@ void SHI::HWBase::resetWithReason(const char *reason, bool restart = true) {
   }
 }
 
+void SHI::HWBase::resetConfig() {
+  config.canary = 0xDEADBEEF;
+  configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
+}
+
 void SHI::HWBase::printConfig() {
   SHI::hw.logInfo(name, __func__,
-                  "IP address:  " + String(SHI::config.local_IP, 16));
+                  "IP address:  " + String(config.local_IP, 16));
   SHI::hw.logInfo(name, __func__,
-                  "Subnet Mask: " + String(SHI::config.subnet, 16));
+                  "Subnet Mask: " + String(config.subnet, 16));
   SHI::hw.logInfo(name, __func__,
-                  "Gateway IP:  " + String(SHI::config.gateway, 16));
+                  "Gateway IP:  " + String(config.gateway, 16));
   SHI::hw.logInfo(name, __func__,
-                  "Canary:      " + String(SHI::config.canary, 16));
-  SHI::hw.logInfo(name, __func__, "Name:        " + String(SHI::config.name));
+                  "Canary:      " + String(config.canary, 16));
+  SHI::hw.logInfo(name, __func__, "Name:        " + String(config.name));
   SHI::hw.logInfo(name, __func__,
-                  "Reset reason:" + String(SHI::config.resetReason));
+                  "Reset reason:" + String(config.resetReason));
 }
 
 bool SHI::HWBase::updateNodeName() {
@@ -190,7 +177,7 @@ bool SHI::HWBase::updateNodeName() {
     newName.trim();
     if (newName.length() == 0)
       return false;
-    newName.toCharArray(SHI::config.name, sizeof(SHI::config.name));
+    newName.toCharArray(config.name, sizeof(config.name));
     SHI::hw.logInfo(name, __func__, "Recevied new Name:" + newName);
     return true;
   } else {
@@ -199,7 +186,7 @@ bool SHI::HWBase::updateNodeName() {
   return false;
 }
 
-String SHI::HWBase::getNodeName() { return String(SHI::config.name); }
+String SHI::HWBase::getNodeName() { return String(config.name); }
 
 void SHI::HWBase::wifiDisconnected(WiFiEventInfo_t info) {
   logInfo(name, __func__,
@@ -216,11 +203,6 @@ void SHI::HWBase::wifiConnected() {
   }
 }
 
-void SHI::HWBase::resetConfig() {
-  config.canary = 0xDEADBEEF;
-  configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
-}
-
 void SHI::HWBase::setup(String defaultName) {
   IPAddress primaryDNS(192, 168, 188, 250); // optional
   IPAddress secondaryDNS(192, 168, 188, 1); // optional
@@ -229,28 +211,20 @@ void SHI::HWBase::setup(String defaultName) {
   debugSerial = &shiSerial;
   Serial.begin(115200);
 
-#ifdef HAS_DISPLAY
-  display.init();
-  display.flipScreenVertically();
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(0, 0, "OLED initial done!");
-  display.display();
-  feedWatchdog();
-#endif
   configPrefs.begin(CONFIG);
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
-  if (SHI::config.canary == CONST_MARKER) {
+  if (config.canary == CONST_MARKER) {
     logInfo(name, __func__, "Restoring config from memory");
     printConfig();
-    WiFi.setHostname(SHI::config.name);
-    if (!WiFi.config(SHI::config.local_IP, SHI::config.gateway,
-                     SHI::config.subnet, primaryDNS, secondaryDNS)) {
+    WiFi.setHostname(config.name);
+    if (!WiFi.config(config.local_IP, config.gateway,
+                     config.subnet, primaryDNS, secondaryDNS)) {
       logInfo(name, __func__, "STA Failed to configure");
     }
   } else {
     logInfo(name, __func__,
-            "Canary mismatch, stored: " + String(SHI::config.canary, 16));
-    defaultName.toCharArray(SHI::config.name, sizeof(SHI::config.name));
+            "Canary mismatch, stored: " + String(config.canary, 16));
+    defaultName.toCharArray(config.name, sizeof(config.name));
   }
 
   logInfo(name, __func__, "Connecting to " + String(ssid));
@@ -284,22 +258,22 @@ void SHI::HWBase::setup(String defaultName) {
   }
   feedWatchdog();
   wifiConnected();
-  if (SHI::config.canary != CONST_MARKER && updateNodeName()) {
+  if (config.canary != CONST_MARKER && updateNodeName()) {
     logInfo(name, __func__, "Storing config");
-    SHI::config.local_IP = WiFi.localIP();
-    SHI::config.gateway = WiFi.gatewayIP();
-    SHI::config.subnet = WiFi.subnetMask();
-    // SHI::config.name is set by updateNodeName
-    WiFi.setHostname(SHI::config.name);
+    config.local_IP = WiFi.localIP();
+    config.gateway = WiFi.gatewayIP();
+    config.subnet = WiFi.subnetMask();
+    // config.name is set by updateNodeName
+    WiFi.setHostname(config.name);
     resetWithReason("Fresh-reset", false);
-    SHI::config.canary = CONST_MARKER;
+    config.canary = CONST_MARKER;
     configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
     logInfo(name, __func__, "ESP Mac Address: " + WiFi.macAddress());
     printConfig();
   }
   auto hwStatus = "STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
                   RESET_SOURCE[rtc_get_reset_reason(1)] + " " +
-                  String(SHI::config.resetReason);
+                  String(config.resetReason);
 
   for (auto &&comm : communicators) {
     comm->setupCommunication();
@@ -342,8 +316,4 @@ bool SHI::HWBase::wifiIsConntected() {
   }
   retryCount = 0;
   return true;
-}
-
-void SHI::HWBase::feedWatchdog() {
-  timerWrite(timer, 0); // reset timer (feed watchdog)
 }

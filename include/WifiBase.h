@@ -10,16 +10,6 @@
 
 namespace SHI {
 
-struct config_t {
-  uint32_t canary;
-  uint32_t local_IP;
-  uint32_t gateway;
-  uint32_t subnet;
-  char name[20];
-  char resetReason[40];
-};
-extern config_t config;
-
 class SHIPrinter : public Print {
 public:
   virtual void begin(int baudRate) = 0;
@@ -29,45 +19,54 @@ public:
 class HWBase : public SHI::SHIHardware {
 public:
   HWBase() : SHIHardware("ESP32") {}
-  String getNodeName();
+  String getNodeName() override;
 
-  void setupWatchdog();
-  void feedWatchdog();
-  void disableWatchdog();
+  void setupWatchdog() override;
+  void feedWatchdog() override;
+  void disableWatchdog() override;
 
-  void setDisplayBrightness(uint8_t value);
-
-  void addChannel(std::shared_ptr<SHI::Channel> channel) {
+  void addChannel(std::shared_ptr<SHI::Channel> channel) override {
     channels.push_back(channel);
   }
-  void addCommunicator(std::shared_ptr<SHI::SHICommunicator> communicator) {
+  void addCommunicator(std::shared_ptr<SHI::SHICommunicator> communicator) override {
     communicators.push_back(communicator);
   }
 
-  void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
+  String getResetReason() override;
+  void resetWithReason(const char *reason, bool restart) override;
+  void errLeds(void) override;
 
-  void resetWithReason(const char *reason, bool restart);
-  void errLeds(void);
+  void setup(String altName) override;
+  void loop() override;
 
-  void setup(String altName);
-  void loop();
-  void printConfig();
-  void resetConfig();
+  void printConfig() override;
+  void resetConfig() override;
 
 protected:
   void log(String message);
 
 private:
-  void uploadInfo(String prefix, String item, String value);
+  struct config_t {
+    uint32_t canary;
+    uint32_t local_IP;
+    uint32_t gateway;
+    uint32_t subnet;
+    char name[20];
+    char resetReason[40];
+  };
   bool wifiIsConntected();
   void wifiDoSetup(String defaultName);
   bool updateNodeName();
+
   void wifiDisconnected(WiFiEventInfo_t info);
   void wifiConnected();
+
   std::vector<std::shared_ptr<SHI::Channel>> channels;
   std::vector<std::shared_ptr<SHI::SHICommunicator>> communicators;
   SHIPrinter *debugSerial;
   Preferences configPrefs;
+  config_t config;
+  hw_timer_t *timer = NULL;
 };
 
 extern HWBase hw;
