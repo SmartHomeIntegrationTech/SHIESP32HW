@@ -28,7 +28,7 @@ struct SensorData {
         name(data->name), intValue(data->intValue) {}
   SensorDataType type;
   std::function<String(SensorData &)> toTransmitString;
-  String name;
+  const String name;
   union {
     float floatValue;
     int intValue;

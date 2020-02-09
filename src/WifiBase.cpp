@@ -136,6 +136,7 @@ String SHI::HWBase::getResetReason() {
 void SHI::HWBase::resetWithReason(const char *reason, bool restart = true) {
   std::memcpy(config.resetReason, reason,
               sizeof(config.resetReason) - 1);
+  config.resetReason[sizeof(config.resetReason) - 1]=0;
   configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
   if (restart) {
     logInfo(name, __func__, "Restarting:" + String(reason));
@@ -283,18 +284,18 @@ void SHI::HWBase::setup(String defaultName) {
 
   for (auto &&channel : channels) {
     auto sensor = channel->sensor;
-    String name = sensor->getName();
-    logInfo(name, __func__, "Setting up: " + name);
+    String sensorName = sensor->getName();
+    logInfo(name, __func__, "Setting up: " + sensorName);
     if (!sensor->setupSensor()) {
       logInfo(name, __func__,
-              "Something went wrong when setting up sensor:" + name +
+              "Something went wrong when setting up sensor:" + sensorName +
                   channel->name + " " + sensor->getStatusMessage());
       while (1) {
         errLeds();
       }
     }
     feedWatchdog();
-    logInfo(name, __func__, "Setup done of: " + name);
+    logInfo(name, __func__, "Setup done of: " + sensorName);
   }
 }
 

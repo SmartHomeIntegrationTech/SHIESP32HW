@@ -5,10 +5,8 @@
 namespace {
 SSD1306Wire display =
     SSD1306Wire(0x3c, SDA_OLED, SCL_OLED, RST_OLED, GEOMETRY_128_64);
-String displayLineBuf[7] = {"", "", "", "", "", "", ""};
 bool displayUpdated = false;
 } // namespace
-    
 
 void SHI::SHIOLEDDisplay::setupCommunication() {
   display.init();
@@ -19,6 +17,7 @@ void SHI::SHIOLEDDisplay::setupCommunication() {
   display.display();
   SHI::hw.feedWatchdog();
 }
+
 void SHI::SHIOLEDDisplay::loopCommunication() {
   if (displayUpdated) {
     displayUpdated = false;
@@ -30,19 +29,22 @@ void SHI::SHIOLEDDisplay::loopCommunication() {
     display.drawStringMaxWidth(0, 3 * 13, 128, displayLineBuf[6]);
     display.display();
   }
-};
+}
+
 void SHI::SHIOLEDDisplay::newReading(SHI::SensorReadings &reading,
                                      SHI::Channel &channel) {
-  auto baseName = channel.name + channel.sensor->getName();
+  const String baseName = channel.name + channel.sensor->getName();
   for (auto &&data : reading.data) {
-    auto name = baseName + data->name;
-    /*auto value = displayItems.find(name);
+    auto sensorName = baseName + data->name;
+    auto value = displayItems.find(sensorName);
     if (value != displayItems.end()) {
-      displayLineBuf[value->second * 2] = data->toTransmitString();
+      displayLineBuf[(value->second * 2)+1] = data->toTransmitString(*data);
       displayUpdated = true;
-    }*/
+      SHI::hw.logInfo(name, __func__, "Updating "+sensorName);
+    }
   }
 }
+
 void SHI::SHIOLEDDisplay::newStatus(SHI::Channel &channel, String message,
                                     bool isFatal) {
   if (message != STATUS_OK) {
@@ -50,10 +52,12 @@ void SHI::SHIOLEDDisplay::newStatus(SHI::Channel &channel, String message,
     displayUpdated = true;
   }
 }
+
 void SHI::SHIOLEDDisplay::newHardwareStatus(String message) {
   displayLineBuf[6] = "HW:" + message;
   displayUpdated = true;
 }
+
 void SHI::SHIOLEDDisplay::setBrightness(uint8_t level) {
   display.setBrightness(level);
 }

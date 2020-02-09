@@ -15,11 +15,16 @@ namespace SHI {
 
 class SHIOLEDDisplay : public SHI::SHICommunicator {
 public:
-  SHIOLEDDisplay(String firstRow="", String secondRow="", String thirdRow="")
+  SHIOLEDDisplay(std::pair<String, String> firstRow = {"", ""},
+                 std::pair<String, String> secondRow = {"", ""},
+                 std::pair<String, String> thirdRow = {"", ""})
       : SHICommunicator("OLEDDisplay") {
-/*    displayItems.insert({firstRow, 0});
-    displayItems.insert({secondRow, 1});
-    displayItems.insert({thirdRow, 2});*/
+    displayItems.insert({firstRow.first, 0});
+    displayItems.insert({secondRow.first, 1});
+    displayItems.insert({thirdRow.first, 2});
+    displayLineBuf[0]=firstRow.second;
+    displayLineBuf[2]=secondRow.second;
+    displayLineBuf[4]=thirdRow.second;
   };
   void setupCommunication() override;
   void loopCommunication() override;
@@ -27,8 +32,10 @@ public:
   void newStatus(SHI::Channel &channel, String message, bool isFatal) override;
   void newHardwareStatus(String message) override;
   void setBrightness(uint8_t level);
+
 private:
-  //std::unordered_map<String, int> displayItems;
+  std::unordered_map<String, int> displayItems;
+  String displayLineBuf[7] = {"", "", "", "", "", "", ""};
 };
 
 } // namespace SHI

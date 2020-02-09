@@ -36,15 +36,16 @@ std::shared_ptr<SHI::SHIRestCommunicator> comms =
 std::shared_ptr<SHI::SHIMulticastHandler> multicastComms =
     std::make_shared<SHI::SHIMulticastHandler>();
 std::shared_ptr<SHI::SHIOLEDDisplay> oled =
-    std::make_shared<SHI::SHIOLEDDisplay>("DummyHumidity", "DummyTemperature",
-                                          "");
+    std::make_shared<SHI::SHIOLEDDisplay>(
+        std::pair<String, String>({"OutsideChannelDummyHumidity", "Feuchtigkeit"}),
+         std::pair<String, String>({"OutsideChannelDummyTemperature", "Temperatur"}));
 
 void setup() {
-  SHI::hw.addCommunicator(comms);
+  //SHI::hw.addCommunicator(comms);
   SHI::hw.addCommunicator(multicastComms);
-#ifdef HAS_DISPLAY  
+#ifdef HAS_DISPLAY
   SHI::hw.addCommunicator(oled);
-#endif  
+#endif
   oled->setBrightness(5);
   SHI::hw.addChannel(channel);
   SHI::hw.setup("Test");

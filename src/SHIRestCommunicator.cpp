@@ -84,9 +84,9 @@ void SHI::SHIRestCommunicator::printError(HTTPClient &http, int httpCode) {
     SHI::hw.logInfo(name, __func__, "response:" + httpCode);
 
     if (httpCode == HTTP_CODE_OK) {
-      String payload = http.getString();
-      if (!payload.isEmpty())
-        SHI::hw.logInfo(name, __func__, "Response payload was:" + payload);
+      ///String payload = http.getString();
+      //if (!payload.isEmpty())
+        //SHI::hw.logInfo(name, __func__, "Response payload was:" + payload);
     }
   } else {
     errorCount++;
