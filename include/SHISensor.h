@@ -1,4 +1,5 @@
 #pragma once
+#include "SHIObject.h"
 #include <Arduino.h>
 #include <functional>
 #include <memory>
@@ -40,33 +41,37 @@ struct SensorReadings {
   SensorReadings(std::vector<std::shared_ptr<SHI::SensorData>> data)
       : timeStamp(0), data(data) {}
   SensorReadings(SensorReadings *readings)
-      : timeStamp(readings->timeStamp),
-        data(readings->data) {}
+      : timeStamp(readings->timeStamp), data(readings->data) {}
   unsigned long timeStamp = 0;
   std::vector<std::shared_ptr<SHI::SensorData>> data = {};
 };
 
-class Sensor {
+class Sensor : public SHI::SHIObject {
 public:
   virtual std::shared_ptr<SensorReadings> readSensor() = 0;
   virtual bool setupSensor() = 0;
+  virtual bool stopSensor() = 0;
   virtual String getStatusMessage() { return statusMessage; };
   virtual bool errorIsFatal() { return fatalError; };
   virtual String getName() { return name; };
 
 protected:
-  Sensor(String name) : name(name){};
+  Sensor(String name) : SHIObject(name){};
   String statusMessage = SHI::STATUS_OK;
   bool fatalError = false;
-  String name;
 };
 
-class Channel {
+class Channel : public SHI::Sensor {
 public:
-  Channel(std::shared_ptr<Sensor> sensor, String name = "")
-      : sensor(sensor), name(name){};
+  Channel(std::shared_ptr<Sensor> sensor, String name)
+      : Sensor(name), sensor(sensor){};
+  std::shared_ptr<SensorReadings> readSensor() { return sensor->readSensor(); };
+  bool setupSensor() { return sensor->setupSensor(); };
+  bool stopSensor() { return sensor->stopSensor(); };
+  String getStatusMessage() { return sensor->getStatusMessage(); };
+  bool errorIsFatal() { return sensor->errorIsFatal(); };
+  String getName() { return name + sensor->getName(); };
   std::shared_ptr<Sensor> sensor;
-  const String name;
 };
 
 String FLOAT_TOSTRING(SHI::SensorData &data);

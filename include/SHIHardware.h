@@ -1,9 +1,10 @@
 #pragma once
 #include <Arduino.h>
+#include <SHIObject.h>
 
 namespace SHI {
 
-class SHIHardware {
+class SHIHardware : public SHI::SHIObject{
 public:
   virtual void resetWithReason(const char *reason, bool restart) = 0;
   virtual void errLeds(void) = 0;
@@ -17,7 +18,7 @@ public:
   virtual void resetConfig() = 0;
   virtual void printConfig() = 0;
 
-  virtual void addChannel(std::shared_ptr<SHI::Channel> channel) = 0;
+  virtual void addSensor(std::shared_ptr<SHI::Sensor> sensor) = 0;
   virtual void
   addCommunicator(std::shared_ptr<SHI::SHICommunicator> communicator) = 0;
   virtual void setup(String defaultName) = 0;
@@ -34,9 +35,8 @@ public:
   };
 
 protected:
-  SHIHardware(String name) : name(name) {}
+  SHIHardware(String name) : SHIObject(name) {}
   virtual void log(String message) = 0;
-  String name;
 };
 
 } // namespace SHI

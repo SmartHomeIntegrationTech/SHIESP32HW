@@ -25,8 +25,8 @@ public:
   void feedWatchdog() override;
   void disableWatchdog() override;
 
-  void addChannel(std::shared_ptr<SHI::Channel> channel) override {
-    channels.push_back(channel);
+  void addSensor(std::shared_ptr<SHI::Sensor> sensor) override {
+    sensors.push_back(sensor);
   }
   void addCommunicator(std::shared_ptr<SHI::SHICommunicator> communicator) override {
     communicators.push_back(communicator);
@@ -61,7 +61,7 @@ private:
   void wifiDisconnected(WiFiEventInfo_t info);
   void wifiConnected();
 
-  std::vector<std::shared_ptr<SHI::Channel>> channels;
+  std::vector<std::shared_ptr<SHI::Sensor>> sensors;
   std::vector<std::shared_ptr<SHI::SHICommunicator>> communicators;
   SHIPrinter *debugSerial;
   Preferences configPrefs;

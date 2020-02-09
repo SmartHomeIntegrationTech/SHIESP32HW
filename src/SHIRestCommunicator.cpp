@@ -15,35 +15,30 @@ const String OHREST = "OpenhabRest";
 } // namespace
 
 void SHI::SHIRestCommunicator::newReading(SHI::SensorReadings &reading,
-                                          SHI::Channel &channel) {
+                                          SHI::Sensor &sensor) {
   if (!isConnected)
     return;
-  auto sensor = channel.sensor;
-  auto sensorName = sensor->getName();
-  auto channelName = channel.name;
+  auto sensorName = sensor.getName();
   SHI::hw.feedWatchdog();
   for (auto &&data : reading.data) {
     if (data->type != SHI::SensorDataType::NO_DATA) {
-      uploadInfo(SHI::hw.getNodeName(), channelName + sensorName + data->name,
+      uploadInfo(SHI::hw.getNodeName(), sensorName + data->name,
                  data->toTransmitString(*data));
       SHI::hw.feedWatchdog();
     }
   }
-  uploadInfo(SHI::hw.getNodeName() + channelName + channel.sensor->getName(),
-             STATUS_ITEM, STATUS_OK);
+  uploadInfo(SHI::hw.getNodeName() + sensor.getName(), STATUS_ITEM, STATUS_OK);
 }
 
-void SHI::SHIRestCommunicator::newStatus(SHI::Channel &channel, String message,
+void SHI::SHIRestCommunicator::newStatus(SHI::Sensor &sensor, String message,
                                          bool isFatal) {
   if (!isConnected) {
     SHI::hw.logInfo(name, __func__,
-                    "Not uploading: " + channel.name +
-                        channel.sensor->getName() +
+                    "Not uploading: " + sensor.getName() +
                         " as currently not connected");
     return;
   }
-  uploadInfo(SHI::hw.getNodeName() + channel.name + channel.sensor->getName(),
-             STATUS_ITEM, message);
+  uploadInfo(SHI::hw.getNodeName() + sensor.getName(), STATUS_ITEM, message);
 }
 
 void SHI::SHIRestCommunicator::newHardwareStatus(String message) {
@@ -84,9 +79,9 @@ void SHI::SHIRestCommunicator::printError(HTTPClient &http, int httpCode) {
     SHI::hw.logInfo(name, __func__, "response:" + httpCode);
 
     if (httpCode == HTTP_CODE_OK) {
-      ///String payload = http.getString();
-      //if (!payload.isEmpty())
-        //SHI::hw.logInfo(name, __func__, "Response payload was:" + payload);
+      /// String payload = http.getString();
+      // if (!payload.isEmpty())
+      // SHI::hw.logInfo(name, __func__, "Response payload was:" + payload);
     }
   } else {
     errorCount++;

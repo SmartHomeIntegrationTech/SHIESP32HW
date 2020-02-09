@@ -32,8 +32,8 @@ void SHI::SHIOLEDDisplay::loopCommunication() {
 }
 
 void SHI::SHIOLEDDisplay::newReading(SHI::SensorReadings &reading,
-                                     SHI::Channel &channel) {
-  const String baseName = channel.name + channel.sensor->getName();
+                                     SHI::Sensor &sensor) {
+  const String baseName = sensor.getName();
   for (auto &&data : reading.data) {
     auto sensorName = baseName + data->name;
     auto value = displayItems.find(sensorName);
@@ -45,7 +45,7 @@ void SHI::SHIOLEDDisplay::newReading(SHI::SensorReadings &reading,
   }
 }
 
-void SHI::SHIOLEDDisplay::newStatus(SHI::Channel &channel, String message,
+void SHI::SHIOLEDDisplay::newStatus(SHI::Sensor &sensor, String message,
                                     bool isFatal) {
   if (message != STATUS_OK) {
     displayLineBuf[6] = message;

@@ -19,11 +19,11 @@ public:
                                  versionHandler(packet);
                                }});
   }
-  void setupCommunication();
-  void loopCommunication();
-  void newReading(SHI::SensorReadings &reading, SHI::Channel &channel){};
-  void newStatus(SHI::Channel &channel, String message, bool isFatal){};
-  void newHardwareStatus(String message){};
+  void setupCommunication() override;
+  void loopCommunication() override;
+  void newReading(SHI::SensorReadings &reading, SHI::Sensor &sensor) override {};
+  void newStatus(SHI::Sensor &sensor, String message, bool isFatal)  override {};
+  void newHardwareStatus(String message)  override {};
   void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
 
 private:

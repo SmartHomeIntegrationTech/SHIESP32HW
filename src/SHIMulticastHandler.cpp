@@ -22,7 +22,7 @@ PROGMEM const String RESET_SOURCE[] = {
 } // namespace
 
 void SHI::SHIMulticastHandler::updateProgress(size_t a, size_t b) {
-  udpMulticast.printf("OK UPDATE:%s %u/%u", SHI::hw.getNodeName().c_str(), a,
+  udpMulticast.printf("OK UPDATE:%s %u/%u\n", SHI::hw.getNodeName().c_str(), a,
                       b);
   SHI::hw.feedWatchdog();
 }
@@ -50,34 +50,32 @@ void SHI::SHIMulticastHandler::startUpdate() {
   http.setTimeout(DATA_TIMEOUT);
   int httpCode = http.GET();
   if (httpCode == 200) {
-    udpMulticast.printf("OK UPDATE:%s Starting", SHI::hw.getNodeName().c_str());
+    udpMulticast.printf("OK UPDATE:%s Starting\n", SHI::hw.getNodeName().c_str());
     int size = http.getSize();
     if (size < 0) {
-      udpMulticast.printf("ERR UPDATE:%s Abort, no size",
+      udpMulticast.printf("ERR UPDATE:%s Abort, no size\n",
                           SHI::hw.getNodeName().c_str());
       return;
     }
     if (!Update.begin(size)) {
-      udpMulticast.printf("ERR UPDATE:%s Abort, not enough space",
+      udpMulticast.printf("ERR UPDATE:%s Abort, not enough space\n",
                           SHI::hw.getNodeName().c_str());
       return;
     }
-    auto progress = std::bind(&SHI::SHIMulticastHandler::updateProgress, this,
-                              std::placeholders::_1, std::placeholders::_2);
-    Update.onProgress(progress);
+    Update.onProgress([this](size_t a, size_t b){updateProgress(a,b);});
     size_t written = Update.writeStream(http.getStream());
     if (written == size) {
-      udpMulticast.printf("OK UPDATE:%s Finishing",
+      udpMulticast.printf("OK UPDATE:%s Finishing\n",
                           SHI::hw.getNodeName().c_str());
       if (!Update.end()) {
-        udpMulticast.printf("ERR UPDATE:%s Abort finish failed: %u",
+        udpMulticast.printf("ERR UPDATE:%s Abort finish failed: %u\n",
                             SHI::hw.getNodeName().c_str(), Update.getError());
       } else {
-        udpMulticast.printf("OK UPDATE:%s Finished",
+        udpMulticast.printf("OK UPDATE:%s Finished\n",
                             SHI::hw.getNodeName().c_str());
       }
     } else {
-      udpMulticast.printf("ERR UPDATE:%s Abort, written:%d size:%d",
+      udpMulticast.printf("ERR UPDATE:%s Abort, written:%d size:%d\n",
                           SHI::hw.getNodeName().c_str(), written, size);
     }
     SHI::hw.resetConfig();
@@ -92,7 +90,7 @@ void SHI::SHIMulticastHandler::loopCommunication() {
       startUpdate();
     } else {
       SHI::hw.logInfo(name, __func__, "No newer version available");
-      udpMulticast.printf("OK UPDATE:%s No update available",
+      udpMulticast.printf("OK UPDATE:%s No update available\n",
                           SHI::hw.getNodeName().c_str());
     }
     doUpdate = false;
@@ -110,6 +108,7 @@ void SHI::SHIMulticastHandler::setupCommunication() {
 void SHI::SHIMulticastHandler::updateHandler(AsyncUDPPacket &packet) {
   SHI::hw.logInfo(name, __func__, "UPDATE called");
   packet.printf("OK UPDATE:%s", SHI::hw.getNodeName().c_str());
+  packet.flush();
   doUpdate = true;
 }
 

@@ -74,33 +74,29 @@ void SHI::HWBase::errLeds(void) {
 void SHI::HWBase::loop() {
   feedWatchdog();
   unsigned long start = millis();
-  bool sensorHasFatalError=false;
+  bool sensorHasFatalError = false;
   if (wifiIsConntected()) {
-    for (auto &&channel : channels) {
-      auto sensor = channel->sensor;
+    for (auto &&sensor : sensors) {
       auto reading = sensor->readSensor();
-      logInfo(name, __func__,
-              "Reading sensor:" + sensor->getName() +
-                  " on channel:" + channel->name);
+      logInfo(name, __func__, "Reading sensor:" + sensor->getName());
       if (reading == nullptr) {
         auto status = sensor->getStatusMessage();
         auto isFatal = sensor->errorIsFatal();
         for (auto &&comm : communicators) {
-          comm->newStatus(*channel, status, isFatal);
+          comm->newStatus(*sensor, status, isFatal);
         }
         if (isFatal) {
-          sensorHasFatalError=true;
+          sensorHasFatalError = true;
           logError(name, __func__,
-                   "Sensor " + channel->name + sensor->getName() +
-                       " reported error " + status);
+                   "Sensor " + sensor->getName() + " reported error " + status);
         } else {
           logWarn(name, __func__,
-                  "Sensor " + channel->name + sensor->getName() +
-                      " reported warning " + status);
+                  "Sensor " + sensor->getName() + " reported warning " +
+                      status);
         }
       } else {
         for (auto &&comm : communicators) {
-          comm->newReading(*reading, *channel);
+          comm->newReading(*reading, *sensor);
         }
       }
     }
@@ -129,14 +125,11 @@ void SHI::HWBase::feedWatchdog() {
 
 void SHI::HWBase::disableWatchdog() { timerEnd(timer); }
 
-String SHI::HWBase::getResetReason() {
-  return String(config.resetReason);
-}
+String SHI::HWBase::getResetReason() { return String(config.resetReason); }
 
 void SHI::HWBase::resetWithReason(const char *reason, bool restart = true) {
-  std::memcpy(config.resetReason, reason,
-              sizeof(config.resetReason) - 1);
-  config.resetReason[sizeof(config.resetReason) - 1]=0;
+  std::memcpy(config.resetReason, reason, sizeof(config.resetReason) - 1);
+  config.resetReason[sizeof(config.resetReason) - 1] = 0;
   configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
   if (restart) {
     logInfo(name, __func__, "Restarting:" + String(reason));
@@ -153,15 +146,11 @@ void SHI::HWBase::resetConfig() {
 void SHI::HWBase::printConfig() {
   SHI::hw.logInfo(name, __func__,
                   "IP address:  " + String(config.local_IP, 16));
-  SHI::hw.logInfo(name, __func__,
-                  "Subnet Mask: " + String(config.subnet, 16));
-  SHI::hw.logInfo(name, __func__,
-                  "Gateway IP:  " + String(config.gateway, 16));
-  SHI::hw.logInfo(name, __func__,
-                  "Canary:      " + String(config.canary, 16));
+  SHI::hw.logInfo(name, __func__, "Subnet Mask: " + String(config.subnet, 16));
+  SHI::hw.logInfo(name, __func__, "Gateway IP:  " + String(config.gateway, 16));
+  SHI::hw.logInfo(name, __func__, "Canary:      " + String(config.canary, 16));
   SHI::hw.logInfo(name, __func__, "Name:        " + String(config.name));
-  SHI::hw.logInfo(name, __func__,
-                  "Reset reason:" + String(config.resetReason));
+  SHI::hw.logInfo(name, __func__, "Reset reason:" + String(config.resetReason));
 }
 
 bool SHI::HWBase::updateNodeName() {
@@ -218,8 +207,8 @@ void SHI::HWBase::setup(String defaultName) {
     logInfo(name, __func__, "Restoring config from memory");
     printConfig();
     WiFi.setHostname(config.name);
-    if (!WiFi.config(config.local_IP, config.gateway,
-                     config.subnet, primaryDNS, secondaryDNS)) {
+    if (!WiFi.config(config.local_IP, config.gateway, config.subnet, primaryDNS,
+                     secondaryDNS)) {
       logInfo(name, __func__, "STA Failed to configure");
     }
   } else {
@@ -282,14 +271,13 @@ void SHI::HWBase::setup(String defaultName) {
   }
   feedWatchdog();
 
-  for (auto &&channel : channels) {
-    auto sensor = channel->sensor;
+  for (auto &&sensor : sensors) {
     String sensorName = sensor->getName();
     logInfo(name, __func__, "Setting up: " + sensorName);
     if (!sensor->setupSensor()) {
       logInfo(name, __func__,
               "Something went wrong when setting up sensor:" + sensorName +
-                  channel->name + " " + sensor->getStatusMessage());
+                  " " + sensor->getStatusMessage());
       while (1) {
         errLeds();
       }

@@ -1,20 +1,20 @@
 #pragma once
 #include "SHISensor.h"
+#include "SHIObject.h"
 
 namespace SHI {
 
-class SHICommunicator {
+class SHICommunicator : public SHI::SHIObject{
   public:
     virtual void wifiConnected(){isConnected=true;};
     virtual void wifiDisconnected(){isConnected=false;};
     virtual void setupCommunication()=0;
     virtual void loopCommunication()=0;
-    virtual void newReading(SHI::SensorReadings &reading, SHI::Channel &channel){};
-    virtual void newStatus(SHI::Channel &channel, String message, bool isFatal){};
+    virtual void newReading(SHI::SensorReadings &reading, SHI::Sensor &sensor){};
+    virtual void newStatus(SHI::Sensor &sensor, String message, bool isFatal){};
     virtual void newHardwareStatus(String message){};
   protected:
-    SHICommunicator(String name) : name(name) {};
-    String name;
+    SHICommunicator(String name) : SHIObject(name) {};
     bool isConnected=false;
 };
 

@@ -11,11 +11,15 @@ public:
   std::shared_ptr<SHI::SensorReadings> readSensor() {
     SHI::hw.logInfo(name, __func__, "Loop Dummy Sensor");
     return reading;
-  };
+  }
   bool setupSensor() {
     SHI::hw.logInfo(name, __func__, "Setup Dummy Sensor");
     return true;
-  };
+  }
+  bool stopSensor() {
+    SHI::hw.logInfo(name, __func__, "Stop Dummy Sensor");
+    return true;
+  }
   std::shared_ptr<SHI::SensorData> humidity =
       std::make_shared<SHI::SensorData>(new SHI::SensorData(
           {SHI::SensorDataType::FLOAT, SHI::FLOAT_TOSTRING, "Humidity"}));
@@ -47,7 +51,7 @@ void setup() {
   SHI::hw.addCommunicator(oled);
 #endif
   oled->setBrightness(5);
-  SHI::hw.addChannel(channel);
+  SHI::hw.addSensor(channel);
   SHI::hw.setup("Test");
   dummy->humidity->floatValue = 10.4;
   dummy->temperature->floatValue = 25;
