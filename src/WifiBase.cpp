@@ -306,3 +306,15 @@ bool SHI::HWBase::wifiIsConntected() {
   retryCount = 0;
   return true;
 }
+
+void SHI::HWBase::accept(SHI::Visitor &visitor) {
+  visitor.visit(this);
+  for (auto &&comm : communicators)
+  {
+    comm->accept(visitor);
+  }
+  for (auto &&sensor : sensors)
+  {
+    sensor->accept(visitor);
+  }
+}

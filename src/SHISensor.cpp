@@ -30,3 +30,8 @@ const String STATUS_ITEM="Status";
 const String STATUS_OK="OK";
 
 } // namespace SHI
+
+void SHI::Channel::accept(SHI::Visitor &visitor) { 
+  visitor.visit(this); 
+  sensor->accept(visitor);
+};

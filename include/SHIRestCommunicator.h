@@ -6,14 +6,15 @@
 
 namespace SHI {
 
-class SHIRestCommunicator : public SHI::SHICommunicator {
+class SHIRestCommunicator : public SHI::Communicator {
 public:
-  SHIRestCommunicator() : SHICommunicator("OpenhabREST") {}
+  SHIRestCommunicator() : Communicator("OpenhabREST") {}
   void setupCommunication() override {};
   void loopCommunication()  override {};
   void newReading(SHI::SensorReadings &reading, SHI::Sensor &sensor) override;
   void newStatus(SHI::Sensor &sensor, String message, bool isFatal) override;
   void newHardwareStatus(String message) override;
+  void accept(SHI::Visitor &visitor) override {visitor.visit(this);};
 
 protected:
   int errorCount = 0, httpErrorCount = 0, httpCount = 0;

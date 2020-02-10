@@ -4,9 +4,9 @@
 
 namespace SHI {
 
-class SHIMulticastHandler : public SHI::SHICommunicator {
+class SHIMulticastHandler : public SHI::Communicator {
 public:
-  SHIMulticastHandler() : SHICommunicator("Multicast") {
+  SHIMulticastHandler() : Communicator("Multicast") {
     registeredHandlers.insert(
         {"UPDATE", [this](AsyncUDPPacket &packet) { updateHandler(packet); }});
     registeredHandlers.insert(
@@ -24,6 +24,7 @@ public:
   void newReading(SHI::SensorReadings &reading, SHI::Sensor &sensor) override {};
   void newStatus(SHI::Sensor &sensor, String message, bool isFatal)  override {};
   void newHardwareStatus(String message)  override {};
+  void accept(SHI::Visitor &visitor) override {visitor.visit(this);};
   void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
 
 private:

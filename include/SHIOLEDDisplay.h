@@ -13,12 +13,12 @@ template <> struct hash<String> {
 
 namespace SHI {
 
-class SHIOLEDDisplay : public SHI::SHICommunicator {
+class SHIOLEDDisplay : public SHI::Communicator {
 public:
   SHIOLEDDisplay(std::pair<String, String> firstRow = {"", ""},
                  std::pair<String, String> secondRow = {"", ""},
                  std::pair<String, String> thirdRow = {"", ""})
-      : SHICommunicator("OLEDDisplay") {
+      : Communicator("OLEDDisplay") {
     displayItems.insert({firstRow.first, 0});
     displayItems.insert({secondRow.first, 1});
     displayItems.insert({thirdRow.first, 2});
@@ -31,6 +31,7 @@ public:
   void newReading(SHI::SensorReadings &reading, SHI::Sensor &sensor) override;
   void newStatus(SHI::Sensor &sensor, String message, bool isFatal) override;
   void newHardwareStatus(String message) override;
+  void accept(SHI::Visitor &visitor) override {visitor.visit(this);};
   void setBrightness(uint8_t level);
 
 private:

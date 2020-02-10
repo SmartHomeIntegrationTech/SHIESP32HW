@@ -21,15 +21,16 @@ enum class SensorDataType { INT, FLOAT, STRING, NO_DATA };
 
 struct SensorData {
   SensorData(SensorDataType type,
-             std::function<String(SensorData &)> toTransmitString, String name)
+             std::function<String(SensorData &)> toTransmitString, String name, String unit="")
       : type(type), toTransmitString(toTransmitString), name(name),
         intValue(0) {}
   SensorData(SensorData *data)
       : type(data->type), toTransmitString(data->toTransmitString),
-        name(data->name), intValue(data->intValue) {}
+        name(data->name), unit(data->unit), intValue(data->intValue) {}
   SensorDataType type;
   std::function<String(SensorData &)> toTransmitString;
   const String name;
+  const String unit;
   union {
     float floatValue;
     int intValue;
@@ -65,13 +66,16 @@ class Channel : public SHI::Sensor {
 public:
   Channel(std::shared_ptr<Sensor> sensor, String name)
       : Sensor(name), sensor(sensor){};
-  std::shared_ptr<SensorReadings> readSensor() { return sensor->readSensor(); };
-  bool setupSensor() { return sensor->setupSensor(); };
-  bool stopSensor() { return sensor->stopSensor(); };
-  String getStatusMessage() { return sensor->getStatusMessage(); };
-  bool errorIsFatal() { return sensor->errorIsFatal(); };
-  String getName() { return name + sensor->getName(); };
-  std::shared_ptr<Sensor> sensor;
+  std::shared_ptr<SensorReadings> readSensor() override {
+    return sensor->readSensor();
+  };
+  bool setupSensor() override { return sensor->setupSensor(); };
+  bool stopSensor() override { return sensor->stopSensor(); };
+  void accept(SHI::Visitor &visitor) override;
+  String getStatusMessage() override { return sensor->getStatusMessage(); };
+  bool errorIsFatal() override { return sensor->errorIsFatal(); };
+  String getName() override { return name + sensor->getName(); };
+  const std::shared_ptr<Sensor> sensor;
 };
 
 String FLOAT_TOSTRING(SHI::SensorData &data);

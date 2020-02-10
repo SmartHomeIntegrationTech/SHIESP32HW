@@ -4,7 +4,7 @@
 
 namespace SHI {
 
-class SHIHardware : public SHI::SHIObject{
+class Hardware : public SHI::SHIObject{
 public:
   virtual void resetWithReason(const char *reason, bool restart) = 0;
   virtual void errLeds(void) = 0;
@@ -20,7 +20,7 @@ public:
 
   virtual void addSensor(std::shared_ptr<SHI::Sensor> sensor) = 0;
   virtual void
-  addCommunicator(std::shared_ptr<SHI::SHICommunicator> communicator) = 0;
+  addCommunicator(std::shared_ptr<SHI::Communicator> communicator) = 0;
   virtual void setup(String defaultName) = 0;
   virtual void loop() = 0;
 
@@ -35,7 +35,7 @@ public:
   };
 
 protected:
-  SHIHardware(String name) : SHIObject(name) {}
+  Hardware(String name) : SHIObject(name) {}
   virtual void log(String message) = 0;
 };
 

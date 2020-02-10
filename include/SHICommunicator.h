@@ -4,7 +4,7 @@
 
 namespace SHI {
 
-class SHICommunicator : public SHI::SHIObject{
+class Communicator : public SHI::SHIObject{
   public:
     virtual void wifiConnected(){isConnected=true;};
     virtual void wifiDisconnected(){isConnected=false;};
@@ -14,7 +14,7 @@ class SHICommunicator : public SHI::SHIObject{
     virtual void newStatus(SHI::Sensor &sensor, String message, bool isFatal){};
     virtual void newHardwareStatus(String message){};
   protected:
-    SHICommunicator(String name) : SHIObject(name) {};
+    Communicator(String name) : SHIObject(name) {};
     bool isConnected=false;
 };
 

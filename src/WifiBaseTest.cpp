@@ -3,6 +3,7 @@
 #include <SHIMulticastHandler.h>
 #include <SHIOLEDDisplay.h>
 #include <SHIRestCommunicator.h>
+#include <SHIVisitor.h>
 
 class DummySensor : public SHI::Sensor {
 public:
@@ -20,12 +21,18 @@ public:
     SHI::hw.logInfo(name, __func__, "Stop Dummy Sensor");
     return true;
   }
+  void accept(SHI::Visitor &visitor) override {
+    visitor.visit(this);
+    for (auto &&data : reading->data) {
+      visitor.visit(&*data);
+    }
+  };
   std::shared_ptr<SHI::SensorData> humidity =
       std::make_shared<SHI::SensorData>(new SHI::SensorData(
-          {SHI::SensorDataType::FLOAT, SHI::FLOAT_TOSTRING, "Humidity"}));
+          {SHI::SensorDataType::FLOAT, SHI::FLOAT_TOSTRING, "Humidity", "%"}));
   std::shared_ptr<SHI::SensorData> temperature =
       std::make_shared<SHI::SensorData>(new SHI::SensorData(
-          {SHI::SensorDataType::FLOAT, SHI::FLOAT_TOSTRING, "Temperature"}));
+          {SHI::SensorDataType::FLOAT, SHI::FLOAT_TOSTRING, "Temperature", "°C"}));
 
 private:
   std::shared_ptr<SHI::SensorReadings> reading =
@@ -41,11 +48,33 @@ std::shared_ptr<SHI::SHIMulticastHandler> multicastComms =
     std::make_shared<SHI::SHIMulticastHandler>();
 std::shared_ptr<SHI::SHIOLEDDisplay> oled =
     std::make_shared<SHI::SHIOLEDDisplay>(
-        std::pair<String, String>({"OutsideChannelDummyHumidity", "Feuchtigkeit"}),
-         std::pair<String, String>({"OutsideChannelDummyTemperature", "Temperatur"}));
+        std::pair<String, String>(
+            {"OutsideChannelDummyHumidity", "Feuchtigkeit"}),
+        std::pair<String, String>(
+            {"OutsideChannelDummyTemperature", "Temperatur"}));
+
+class PrintHierachyVisitor : public SHI::Visitor {
+public:
+  void visit(SHI::Sensor *sensor) override {
+    result += " S:" + sensor->getName() + "\n";
+  };
+  void visit(SHI::Channel *channel) override {
+    result += " CH:" + channel->getName() + "\n";
+  };
+  void visit(SHI::Hardware *harwdware) override {
+    result += harwdware->getName() + "\n";
+  };
+  void visit(SHI::Communicator *communicator) override {
+    result += " C:" + communicator->getName() + "\n";
+  };
+  void visit(SHI::SensorData *data) override {
+    result += "  SD:" + data->name + " unit:"+data->unit+" type:"+String(static_cast<int>(data->type))+"\n";
+  }
+  String result = "";
+};
 
 void setup() {
-  //SHI::hw.addCommunicator(comms);
+  // SHI::hw.addCommunicator(comms);
   SHI::hw.addCommunicator(multicastComms);
 #ifdef HAS_DISPLAY
   SHI::hw.addCommunicator(oled);
@@ -55,6 +84,9 @@ void setup() {
   SHI::hw.setup("Test");
   dummy->humidity->floatValue = 10.4;
   dummy->temperature->floatValue = 25;
+  PrintHierachyVisitor visitor;
+  SHI::hw.accept(visitor);
+  SHI::hw.logInfo("WifiBaseTest", __func__, visitor.result);
 }
 void loop() {
   SHI::hw.loop();

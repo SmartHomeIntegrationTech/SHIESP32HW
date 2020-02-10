@@ -40,7 +40,6 @@ void SHI::SHIOLEDDisplay::newReading(SHI::SensorReadings &reading,
     if (value != displayItems.end()) {
       displayLineBuf[(value->second * 2)+1] = data->toTransmitString(*data);
       displayUpdated = true;
-      SHI::hw.logInfo(name, __func__, "Updating "+sensorName);
     }
   }
 }

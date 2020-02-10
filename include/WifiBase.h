@@ -16,9 +16,9 @@ public:
   virtual size_t write(uint8_t data) = 0;
 };
 
-class HWBase : public SHI::SHIHardware {
+class HWBase : public SHI::Hardware {
 public:
-  HWBase() : SHIHardware("ESP32") {}
+  HWBase() : Hardware("ESP32") {}
   String getNodeName() override;
 
   void setupWatchdog() override;
@@ -28,7 +28,7 @@ public:
   void addSensor(std::shared_ptr<SHI::Sensor> sensor) override {
     sensors.push_back(sensor);
   }
-  void addCommunicator(std::shared_ptr<SHI::SHICommunicator> communicator) override {
+  void addCommunicator(std::shared_ptr<SHI::Communicator> communicator) override {
     communicators.push_back(communicator);
   }
 
@@ -41,6 +41,8 @@ public:
 
   void printConfig() override;
   void resetConfig() override;
+
+  void accept(SHI::Visitor &visitor) override;
 
 protected:
   void log(String message);
@@ -62,7 +64,7 @@ private:
   void wifiConnected();
 
   std::vector<std::shared_ptr<SHI::Sensor>> sensors;
-  std::vector<std::shared_ptr<SHI::SHICommunicator>> communicators;
+  std::vector<std::shared_ptr<SHI::Communicator>> communicators;
   SHIPrinter *debugSerial;
   Preferences configPrefs;
   config_t config;
