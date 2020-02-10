@@ -104,10 +104,12 @@ void SHI::HWBase::loop() {
   for (auto &&comm : communicators) {
     comm->loopCommunication();
   }
+  unsigned long diff = millis() - start;
+  averageSensorLoopDuration = ((averageSensorLoopDuration * 9) + diff) / 10.;
+
   while (sensorHasFatalError) {
     errLeds();
   }
-  int diff = millis() - start;
   if (diff < 1000)
     delay(diff);
 }
@@ -193,14 +195,26 @@ void SHI::HWBase::wifiConnected() {
   }
 }
 
-void SHI::HWBase::setup(String defaultName) {
+void SHI::HWBase::setupSensors() {
+  for (auto &&sensor : sensors) {
+    String sensorName = sensor->getName();
+    logInfo(name, __func__, "Setting up: " + sensorName);
+    if (!sensor->setupSensor()) {
+      logInfo(name, __func__,
+              "Something went wrong when setting up sensor:" + sensorName +
+                  " " + sensor->getStatusMessage());
+      while (1) {
+        errLeds();
+      }
+    }
+    feedWatchdog();
+    logInfo(name, __func__, "Setup done of: " + sensorName);
+  }
+}
+
+void SHI::HWBase::setupWifiFromConfig(String defaultName) {
   IPAddress primaryDNS(192, 168, 188, 250); // optional
   IPAddress secondaryDNS(192, 168, 188, 1); // optional
-  setupWatchdog();
-  feedWatchdog();
-  debugSerial = &shiSerial;
-  Serial.begin(115200);
-
   configPrefs.begin(CONFIG);
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
   if (config.canary == CONST_MARKER) {
@@ -216,8 +230,6 @@ void SHI::HWBase::setup(String defaultName) {
             "Canary mismatch, stored: " + String(config.canary, 16));
     defaultName.toCharArray(config.name, sizeof(config.name));
   }
-
-  logInfo(name, __func__, "Connecting to " + String(ssid));
 
   feedWatchdog();
   WiFi.onEvent([this](WiFiEvent_t event, WiFiEventInfo_t info) {
@@ -236,8 +248,9 @@ void SHI::HWBase::setup(String defaultName) {
       [this](WiFiEvent_t event, WiFiEventInfo_t info) { wifiConnected(); },
       SYSTEM_EVENT_STA_GOT_IP);
   WiFi.begin(ssid, password);
+}
 
-  int connectCount = 0;
+void SHI::HWBase::initialWifiConnect() {
   while (WiFi.status() != WL_CONNECTED) {
     if (connectCount > 10) {
       ESP.restart();
@@ -248,6 +261,9 @@ void SHI::HWBase::setup(String defaultName) {
   }
   feedWatchdog();
   wifiConnected();
+}
+
+void SHI::HWBase::storeWifiConfig() {
   if (config.canary != CONST_MARKER && updateNodeName()) {
     logInfo(name, __func__, "Storing config");
     config.local_IP = WiFi.localIP();
@@ -261,36 +277,40 @@ void SHI::HWBase::setup(String defaultName) {
     logInfo(name, __func__, "ESP Mac Address: " + WiFi.macAddress());
     printConfig();
   }
+}
+
+void SHI::HWBase::setup(String defaultName) {
+  setupWatchdog();
+  feedWatchdog();
+  debugSerial = &shiSerial;
+  debugSerial->begin(115200);
+
+  setupWifiFromConfig(defaultName);
+  logInfo(name, __func__, "Connecting to " + String(ssid));
+
+  unsigned long intialWifiConnectStart = millis();
+  initialWifiConnect();
+  storeWifiConfig();
+  initialWifiConnectTime = millis() - intialWifiConnectStart;
   auto hwStatus = "STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
                   RESET_SOURCE[rtc_get_reset_reason(1)] + " " +
                   String(config.resetReason);
-
+  unsigned long commSetupStart = millis();
   for (auto &&comm : communicators) {
     comm->setupCommunication();
     comm->newHardwareStatus(hwStatus);
   }
+  commSetupTime = millis() - commSetupStart;
   feedWatchdog();
-
-  for (auto &&sensor : sensors) {
-    String sensorName = sensor->getName();
-    logInfo(name, __func__, "Setting up: " + sensorName);
-    if (!sensor->setupSensor()) {
-      logInfo(name, __func__,
-              "Something went wrong when setting up sensor:" + sensorName +
-                  " " + sensor->getStatusMessage());
-      while (1) {
-        errLeds();
-      }
-    }
-    feedWatchdog();
-    logInfo(name, __func__, "Setup done of: " + sensorName);
-  }
+  unsigned long sensorSetupStart = millis();
+  setupSensors();
+  sensorSetupTime = millis() - sensorSetupStart;
 }
 
 void SHI::HWBase::log(String msg) { debugSerial->println(msg); }
 
 bool SHI::HWBase::wifiIsConntected() {
-  static int retryCount = 0;
+  unsigned long start = millis();
   while (WiFi.status() != WL_CONNECTED) {
     feedWatchdog();
     if (retryCount > 6) {
@@ -303,18 +323,30 @@ bool SHI::HWBase::wifiIsConntected() {
     retryCount++;
     delay(retryCount * 1000);
   }
+  unsigned long diff = millis() - start;
+  averageConnectDuration = ((averageConnectDuration * 9) + diff) / 10.;
   retryCount = 0;
   return true;
 }
 
 void SHI::HWBase::accept(SHI::Visitor &visitor) {
   visitor.visit(this);
-  for (auto &&comm : communicators)
-  {
+  for (auto &&comm : communicators) {
     comm->accept(visitor);
   }
-  for (auto &&sensor : sensors)
-  {
+  for (auto &&sensor : sensors) {
     sensor->accept(visitor);
   }
+}
+
+std::vector<std::pair<String, String>> SHI::HWBase::getStatistics() {
+  return {
+      {"connectCount", String(connectCount)}, 
+      {"retryCount", String(retryCount)},
+      {"initialWifiConnectTime", String(initialWifiConnectTime)}, 
+      {"commSetupTime", String(commSetupTime)},
+      {"sensorSetupTime", String(sensorSetupTime)},      
+      {"averageSensorLoopDuration", String(averageSensorLoopDuration)},
+      {"averageConnectDuration", String(averageConnectDuration)},
+  };
 }

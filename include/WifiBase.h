@@ -44,6 +44,8 @@ public:
 
   void accept(SHI::Visitor &visitor) override;
 
+  std::vector<std::pair<String, String>> getStatistics() override;
+
 protected:
   void log(String message);
 
@@ -59,6 +61,10 @@ private:
   bool wifiIsConntected();
   void wifiDoSetup(String defaultName);
   bool updateNodeName();
+  void setupSensors();
+  void setupWifiFromConfig(String defaultName);
+  void initialWifiConnect();
+  void storeWifiConfig();
 
   void wifiDisconnected(WiFiEventInfo_t info);
   void wifiConnected();
@@ -69,6 +75,9 @@ private:
   Preferences configPrefs;
   config_t config;
   hw_timer_t *timer = NULL;
+  int connectCount = 0, retryCount = 0;
+  unsigned long sensorSetupTime = 0, initialWifiConnectTime = 0, commSetupTime=0;
+  float averageSensorLoopDuration = 0, averageConnectDuration = 0;
 };
 
 extern HWBase hw;
