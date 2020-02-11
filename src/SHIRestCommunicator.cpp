@@ -1,6 +1,6 @@
 #include "SHIRestCommunicator.h"
 #include "SHISensor.h"
-#include "WifiBase.h"
+#include "SHIHardware.h"
 #include <Arduino.h>
 #include <HTTPClient.h>
 
@@ -19,35 +19,35 @@ void SHI::RestCommunicator::newReading(SHI::SensorReadings &reading,
   if (!isConnected)
     return;
   auto sensorName = sensor.getName();
-  SHI::hw.feedWatchdog();
+  SHI::hw->feedWatchdog();
   for (auto &&data : reading.data) {
     if (data->type != SHI::SensorDataType::NO_DATA) {
-      uploadInfo(SHI::hw.getNodeName(), sensorName + data->name,
+      uploadInfo(SHI::hw->getNodeName(), sensorName + data->name,
                  data->toTransmitString(*data));
-      SHI::hw.feedWatchdog();
+      SHI::hw->feedWatchdog();
     }
   }
-  uploadInfo(SHI::hw.getNodeName() + sensor.getName(), STATUS_ITEM, STATUS_OK);
+  uploadInfo(SHI::hw->getNodeName() + sensor.getName(), STATUS_ITEM, STATUS_OK);
 }
 
 void SHI::RestCommunicator::newStatus(SHI::Sensor &sensor, String message,
                                          bool isFatal) {
   if (!isConnected) {
-    SHI::hw.logInfo(name, __func__,
+    SHI::hw->logInfo(name, __func__,
                     "Not uploading: " + sensor.getName() +
                         " as currently not connected");
     return;
   }
-  uploadInfo(SHI::hw.getNodeName() + sensor.getName(), STATUS_ITEM, message);
+  uploadInfo(SHI::hw->getNodeName() + sensor.getName(), STATUS_ITEM, message);
 }
 
 void SHI::RestCommunicator::newHardwareStatus(String message) {
-  uploadInfo(SHI::hw.getNodeName(), STATUS_ITEM, message);
+  uploadInfo(SHI::hw->getNodeName(), STATUS_ITEM, message);
 }
 
 void SHI::RestCommunicator::uploadInfo(String name, String item,
                                           String value) {
-  SHI::hw.logInfo(name, __func__, name + " " + item + " " + value);
+  SHI::hw->logInfo(name, __func__, name + " " + item + " " + value);
   bool tryHard = false;
   if (item == STATUS_ITEM && value != STATUS_OK) {
     tryHard = true;
@@ -65,7 +65,7 @@ void SHI::RestCommunicator::uploadInfo(String name, String item,
     if (httpCode == 202)
       return; // Either return early or try until success
     retryCount++;
-    SHI::hw.feedWatchdog();
+    SHI::hw->feedWatchdog();
   } while (tryHard && retryCount < 15);
 }
 
@@ -76,16 +76,16 @@ void SHI::RestCommunicator::printError(HTTPClient &http, int httpCode) {
       httpErrorCount++;
     httpCount++;
     // HTTP header has been send and Server response header has been handled
-    SHI::hw.logInfo(name, __func__, "response:" + httpCode);
+    SHI::hw->logInfo(name, __func__, "response:" + httpCode);
 
     if (httpCode == HTTP_CODE_OK) {
       /// String payload = http.getString();
       // if (!payload.isEmpty())
-      // SHI::hw.logInfo(name, __func__, "Response payload was:" + payload);
+      // SHI::hw->logInfo(name, __func__, "Response payload was:" + payload);
     }
   } else {
     errorCount++;
     // ets_printf(http.errorToString(httpCode).c_str());
-    SHI::hw.logInfo(name, __func__, "Failed " + httpCode);
+    SHI::hw->logInfo(name, __func__, "Failed " + httpCode);
   }
 }

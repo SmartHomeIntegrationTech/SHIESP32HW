@@ -80,5 +80,4 @@ private:
   float averageSensorLoopDuration = 0, averageConnectDuration = 0;
 };
 
-extern ESP32HW hw;
 } // namespace SHI

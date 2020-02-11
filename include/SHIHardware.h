@@ -39,4 +39,6 @@ protected:
   virtual void log(String message) = 0;
 };
 
+extern SHI::Hardware* hw;
+
 } // namespace SHI

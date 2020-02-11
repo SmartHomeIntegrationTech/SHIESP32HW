@@ -1,4 +1,4 @@
-#include "WifiBase.h"
+#include "SHIESP32HW.h"
 #include <Arduino.h>
 #include <AsyncUDP.h>
 #include <HTTPClient.h>
@@ -14,9 +14,10 @@
 #define BUILTIN_LED -1
 #endif
 
-SHI::ESP32HW SHI::hw;
-
 namespace {
+
+SHI::ESP32HW instance;
+
 #ifndef NO_SERIAL
 class HarwareSHIPrinter : public SHI::SHIPrinter {
   void begin(int baudRate) { Serial.begin(baudRate); };
@@ -52,11 +53,13 @@ const int DATA_TIMEOUT = 1000;
 
 void IRAM_ATTR resetModule() {
   ets_printf("Watchdog bit, reboot\n");
-  SHI::hw.resetWithReason("Watchdog triggered", false);
+  SHI::hw->resetWithReason("Watchdog triggered", false);
   esp_restart();
 }
 
 } // namespace
+
+SHI::Hardware* SHI::hw=&instance;
 
 void SHI::ESP32HW::errLeds(void) {
   // Set pin mode
@@ -146,13 +149,13 @@ void SHI::ESP32HW::resetConfig() {
 }
 
 void SHI::ESP32HW::printConfig() {
-  SHI::hw.logInfo(name, __func__,
+  SHI::hw->logInfo(name, __func__,
                   "IP address:  " + String(config.local_IP, 16));
-  SHI::hw.logInfo(name, __func__, "Subnet Mask: " + String(config.subnet, 16));
-  SHI::hw.logInfo(name, __func__, "Gateway IP:  " + String(config.gateway, 16));
-  SHI::hw.logInfo(name, __func__, "Canary:      " + String(config.canary, 16));
-  SHI::hw.logInfo(name, __func__, "Name:        " + String(config.name));
-  SHI::hw.logInfo(name, __func__, "Reset reason:" + String(config.resetReason));
+  SHI::hw->logInfo(name, __func__, "Subnet Mask: " + String(config.subnet, 16));
+  SHI::hw->logInfo(name, __func__, "Gateway IP:  " + String(config.gateway, 16));
+  SHI::hw->logInfo(name, __func__, "Canary:      " + String(config.canary, 16));
+  SHI::hw->logInfo(name, __func__, "Name:        " + String(config.name));
+  SHI::hw->logInfo(name, __func__, "Reset reason:" + String(config.resetReason));
 }
 
 bool SHI::ESP32HW::updateNodeName() {
@@ -170,10 +173,10 @@ bool SHI::ESP32HW::updateNodeName() {
     if (newName.length() == 0)
       return false;
     newName.toCharArray(config.name, sizeof(config.name));
-    SHI::hw.logInfo(name, __func__, "Recevied new Name:" + newName);
+    SHI::hw->logInfo(name, __func__, "Recevied new Name:" + newName);
     return true;
   } else {
-    SHI::hw.logInfo(name, __func__, "Failed to update name for mac:" + mac);
+    SHI::hw->logInfo(name, __func__, "Failed to update name for mac:" + mac);
   }
   return false;
 }

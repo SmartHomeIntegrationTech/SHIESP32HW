@@ -1,24 +1,24 @@
-#include "WifiBase.h"
 #include <Arduino.h>
 #include <SHIMulticastHandler.h>
 #include <SHIOLEDDisplay.h>
 #include <SHIRestCommunicator.h>
 #include <SHIVisitor.h>
+#include <SHIHardware.h>
 
 class DummySensor : public SHI::Sensor {
 public:
   DummySensor() : Sensor("Dummy") {}
 
   std::shared_ptr<SHI::SensorReadings> readSensor() {
-    SHI::hw.logInfo(name, __func__, "Loop Dummy Sensor");
+    SHI::hw->logInfo(name, __func__, "Loop Dummy Sensor");
     return reading;
   }
   bool setupSensor() {
-    SHI::hw.logInfo(name, __func__, "Setup Dummy Sensor");
+    SHI::hw->logInfo(name, __func__, "Setup Dummy Sensor");
     return true;
   }
   bool stopSensor() {
-    SHI::hw.logInfo(name, __func__, "Stop Dummy Sensor");
+    SHI::hw->logInfo(name, __func__, "Stop Dummy Sensor");
     return true;
   }
   void accept(SHI::Visitor &visitor) override {
@@ -74,22 +74,22 @@ public:
 };
 
 void setup() {
-  // SHI::hw.addCommunicator(comms);
-  SHI::hw.addCommunicator(multicastComms);
+  // SHI::hw->addCommunicator(comms);
+  SHI::hw->addCommunicator(multicastComms);
 #ifdef HAS_DISPLAY
-  SHI::hw.addCommunicator(oled);
+  SHI::hw->addCommunicator(oled);
 #endif
   oled->setBrightness(5);
-  SHI::hw.addSensor(channel);
-  SHI::hw.setup("Test");
+  SHI::hw->addSensor(channel);
+  SHI::hw->setup("Test");
   dummy->humidity->floatValue = 10.4;
   dummy->temperature->floatValue = 25;
   PrintHierachyVisitor visitor;
-  SHI::hw.accept(visitor);
-  SHI::hw.logInfo("WifiBaseTest", __func__, visitor.result);
+  SHI::hw->accept(visitor);
+  SHI::hw->logInfo("WifiBaseTest", __func__, visitor.result);
 }
 void loop() {
-  SHI::hw.loop();
+  SHI::hw->loop();
   dummy->humidity->floatValue += 1;
   dummy->temperature->floatValue += 2.3;
   delay(1000);

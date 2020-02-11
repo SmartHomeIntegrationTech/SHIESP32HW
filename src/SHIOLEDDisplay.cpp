@@ -1,5 +1,5 @@
 #include "SHIOLEDDisplay.h"
-#include <WifiBase.h>
+#include "SHIHardware.h"
 #include <oled/SSD1306Wire.h>
 
 namespace {
@@ -15,7 +15,7 @@ void SHI::OLEDDisplay::setupCommunication() {
   display.drawString(0, 0, "OLED initial done!");
   display.setBrightness(5);
   display.display();
-  SHI::hw.feedWatchdog();
+  SHI::hw->feedWatchdog();
 }
 
 void SHI::OLEDDisplay::loopCommunication() {
