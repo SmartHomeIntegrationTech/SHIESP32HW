@@ -12,7 +12,7 @@ const String STATUS_ITEM = "Status";
 const String STATUS_OK = "OK";
 const String OHREST = "OpenhabRest";
 
-} // namespace
+}  // namespace
 
 void SHI::RestCommunicator::newReading(SHI::SensorReadings &reading,
                                           SHI::Sensor &sensor) {
@@ -63,7 +63,7 @@ void SHI::RestCommunicator::uploadInfo(String name, String item,
     printError(http, httpCode);
     http.end();
     if (httpCode == 202)
-      return; // Either return early or try until success
+      return;  // Either return early or try until success
     retryCount++;
     SHI::hw->feedWatchdog();
   } while (tryHard && retryCount < 15);
@@ -88,4 +88,12 @@ void SHI::RestCommunicator::printError(HTTPClient &http, int httpCode) {
     // ets_printf(http.errorToString(httpCode).c_str());
     SHI::hw->logInfo(name, __func__, "Failed " + httpCode);
   }
+}
+
+std::vector<std::pair<String, String>> SHI::RestCommunicator::getStatistics() {
+  return {
+      {"httpFatalErrorCount", String(errorCount)},
+      {"httpErrorCount", String(httpErrorCount)},
+      {"httpCount", String(httpCount)}
+  };
 }

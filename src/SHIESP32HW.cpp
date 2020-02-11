@@ -20,13 +20,13 @@ SHI::ESP32HW instance;
 
 #ifndef NO_SERIAL
 class HarwareSHIPrinter : public SHI::SHIPrinter {
-  void begin(int baudRate) { Serial.begin(baudRate); };
-  size_t write(uint8_t data) { return Serial.write(data); };
+  void begin(int baudRate) { Serial.begin(baudRate); }
+  size_t write(uint8_t data) { return Serial.write(data); }
 };
 HarwareSHIPrinter shiSerial;
 #else
 class NullSHIPrinter : public SHI::SHIPrinter {
-public:
+ public:
   size_t write(uint8_t) { return 1; }
   void begin(int baudRate) {}
 };
@@ -46,7 +46,7 @@ const char *password = "fe-shnyed-olv-ek";
 const char *CONFIG = "wifiConfig";
 const uint32_t CONST_MARKER = 0xCAFEBABE;
 
-const int wdtTimeout = 15000; // time in ms to trigger the watchdog
+const int wdtTimeout = 15000;  // time in ms to trigger the watchdog
 
 const int CONNECT_TIMEOUT = 500;
 const int DATA_TIMEOUT = 1000;
@@ -57,9 +57,9 @@ void IRAM_ATTR resetModule() {
   esp_restart();
 }
 
-} // namespace
+}  // namespace
 
-SHI::Hardware* SHI::hw=&instance;
+SHI::Hardware *SHI::hw = &instance;
 
 void SHI::ESP32HW::errLeds(void) {
   // Set pin mode
@@ -76,7 +76,7 @@ void SHI::ESP32HW::errLeds(void) {
 
 void SHI::ESP32HW::loop() {
   feedWatchdog();
-  unsigned long start = millis();
+  uint32_t start = millis();
   bool sensorHasFatalError = false;
   if (wifiIsConntected()) {
     for (auto &&sensor : sensors) {
@@ -107,7 +107,7 @@ void SHI::ESP32HW::loop() {
   for (auto &&comm : communicators) {
     comm->loopCommunication();
   }
-  unsigned long diff = millis() - start;
+  uint32_t diff = millis() - start;
   averageSensorLoopDuration = ((averageSensorLoopDuration * 9) + diff) / 10.;
 
   while (sensorHasFatalError) {
@@ -118,14 +118,14 @@ void SHI::ESP32HW::loop() {
 }
 
 void SHI::ESP32HW::setupWatchdog() {
-  timer = timerBegin(0, 80, true);                  // timer 0, div 80
-  timerAttachInterrupt(timer, &resetModule, true);  // attach callback
-  timerAlarmWrite(timer, wdtTimeout * 1000, false); // set time in us
+  timer = timerBegin(0, 80, true);                   // timer 0, div 80
+  timerAttachInterrupt(timer, &resetModule, true);   // attach callback
+  timerAlarmWrite(timer, wdtTimeout * 1000, false);  // set time in us
   timerAlarmEnable(timer);
 }
 
 void SHI::ESP32HW::feedWatchdog() {
-  timerWrite(timer, 0); // reset timer (feed watchdog)
+  timerWrite(timer, 0);  // reset timer (feed watchdog)
 }
 
 void SHI::ESP32HW::disableWatchdog() { timerEnd(timer); }
@@ -150,12 +150,14 @@ void SHI::ESP32HW::resetConfig() {
 
 void SHI::ESP32HW::printConfig() {
   SHI::hw->logInfo(name, __func__,
-                  "IP address:  " + String(config.local_IP, 16));
+                   "IP address:  " + String(config.local_IP, 16));
   SHI::hw->logInfo(name, __func__, "Subnet Mask: " + String(config.subnet, 16));
-  SHI::hw->logInfo(name, __func__, "Gateway IP:  " + String(config.gateway, 16));
+  SHI::hw->logInfo(name, __func__,
+                   "Gateway IP:  " + String(config.gateway, 16));
   SHI::hw->logInfo(name, __func__, "Canary:      " + String(config.canary, 16));
   SHI::hw->logInfo(name, __func__, "Name:        " + String(config.name));
-  SHI::hw->logInfo(name, __func__, "Reset reason:" + String(config.resetReason));
+  SHI::hw->logInfo(name, __func__,
+                   "Reset reason:" + String(config.resetReason));
 }
 
 bool SHI::ESP32HW::updateNodeName() {
@@ -216,8 +218,8 @@ void SHI::ESP32HW::setupSensors() {
 }
 
 void SHI::ESP32HW::setupWifiFromConfig(String defaultName) {
-  IPAddress primaryDNS(192, 168, 188, 250); // optional
-  IPAddress secondaryDNS(192, 168, 188, 1); // optional
+  IPAddress primaryDNS(192, 168, 188, 250);  // optional
+  IPAddress secondaryDNS(192, 168, 188, 1);  // optional
   configPrefs.begin(CONFIG);
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
   if (config.canary == CONST_MARKER) {
@@ -291,21 +293,21 @@ void SHI::ESP32HW::setup(String defaultName) {
   setupWifiFromConfig(defaultName);
   logInfo(name, __func__, "Connecting to " + String(ssid));
 
-  unsigned long intialWifiConnectStart = millis();
+  uint32_t intialWifiConnectStart = millis();
   initialWifiConnect();
   storeWifiConfig();
   initialWifiConnectTime = millis() - intialWifiConnectStart;
   auto hwStatus = "STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
                   RESET_SOURCE[rtc_get_reset_reason(1)] + " " +
                   String(config.resetReason);
-  unsigned long commSetupStart = millis();
+  uint32_t commSetupStart = millis();
   for (auto &&comm : communicators) {
     comm->setupCommunication();
     comm->newHardwareStatus(hwStatus);
   }
   commSetupTime = millis() - commSetupStart;
   feedWatchdog();
-  unsigned long sensorSetupStart = millis();
+  uint32_t sensorSetupStart = millis();
   setupSensors();
   sensorSetupTime = millis() - sensorSetupStart;
 }
@@ -313,7 +315,7 @@ void SHI::ESP32HW::setup(String defaultName) {
 void SHI::ESP32HW::log(String msg) { debugSerial->println(msg); }
 
 bool SHI::ESP32HW::wifiIsConntected() {
-  unsigned long start = millis();
+  uint32_t start = millis();
   while (WiFi.status() != WL_CONNECTED) {
     feedWatchdog();
     if (retryCount > 6) {
@@ -326,7 +328,7 @@ bool SHI::ESP32HW::wifiIsConntected() {
     retryCount++;
     delay(retryCount * 1000);
   }
-  unsigned long diff = millis() - start;
+  uint32_t diff = millis() - start;
   averageConnectDuration = ((averageConnectDuration * 9) + diff) / 10.;
   retryCount = 0;
   return true;
@@ -344,11 +346,11 @@ void SHI::ESP32HW::accept(SHI::Visitor &visitor) {
 
 std::vector<std::pair<String, String>> SHI::ESP32HW::getStatistics() {
   return {
-      {"connectCount", String(connectCount)}, 
+      {"connectCount", String(connectCount)},
       {"retryCount", String(retryCount)},
-      {"initialWifiConnectTime", String(initialWifiConnectTime)}, 
+      {"initialWifiConnectTime", String(initialWifiConnectTime)},
       {"commSetupTime", String(commSetupTime)},
-      {"sensorSetupTime", String(sensorSetupTime)},      
+      {"sensorSetupTime", String(sensorSetupTime)},
       {"averageSensorLoopDuration", String(averageSensorLoopDuration)},
       {"averageConnectDuration", String(averageConnectDuration)},
   };

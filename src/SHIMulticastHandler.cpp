@@ -18,7 +18,29 @@ PROGMEM const String RESET_SOURCE[] = {
     "RTCWDT_CPU_RESET", "EXT_CPU_RESET",    "RTCWDT_BROWN_OUT_RESET",
     "RTCWDT_RTC_RESET"};
 
-} // namespace
+class StatsVisitor : public SHI::Visitor {
+ public:
+  void visit(SHI::Sensor *sensor) {
+    for (auto &&stat : sensor->getStatistics()) {
+      statString +=
+          sensor->getName() + "." + stat.first + ":" + stat.second + "\n";
+    }
+  }
+  void visit(SHI::Hardware *hardware) {
+    for (auto &&stat : hardware->getStatistics()) {
+      statString +=
+          hardware->getName() + "." + stat.first + ":" + stat.second + "\n";
+    }
+  }
+  void visit(SHI::Communicator *communicator) {
+    for (auto &&stat : communicator->getStatistics()) {
+      statString +=
+          communicator->getName() + "." + stat.first + ":" + stat.second + "\n";
+    }
+  }
+  String statString = "";
+};
+}  // namespace
 
 void SHI::MulticastHandler::updateProgress(size_t a, size_t b) {
   udpMulticast.printf("OK UPDATE:%s %u/%u\n", SHI::hw->getNodeName().c_str(), a,
@@ -49,7 +71,8 @@ void SHI::MulticastHandler::startUpdate() {
   http.setTimeout(DATA_TIMEOUT);
   int httpCode = http.GET();
   if (httpCode == 200) {
-    udpMulticast.printf("OK UPDATE:%s Starting\n", SHI::hw->getNodeName().c_str());
+    udpMulticast.printf("OK UPDATE:%s Starting\n",
+                        SHI::hw->getNodeName().c_str());
     int size = http.getSize();
     if (size < 0) {
       udpMulticast.printf("ERR UPDATE:%s Abort, no size\n",
@@ -61,7 +84,7 @@ void SHI::MulticastHandler::startUpdate() {
                           SHI::hw->getNodeName().c_str());
       return;
     }
-    Update.onProgress([this](size_t a, size_t b){updateProgress(a,b);});
+    Update.onProgress([this](size_t a, size_t b) { updateProgress(a, b); });
     size_t written = Update.writeStream(http.getStream());
     if (written == size) {
       udpMulticast.printf("OK UPDATE:%s Finishing\n",
@@ -128,18 +151,23 @@ void SHI::MulticastHandler::reconfHandler(AsyncUDPPacket &packet) {
 
 void SHI::MulticastHandler::infoHandler(AsyncUDPPacket &packet) {
   SHI::hw->logInfo(name, __func__, "INFO called");
+  StatsVisitor stats;
+  SHI::hw->accept(stats);
+  SHI::hw->logInfo(name, __func__, "Stats:"+stats.statString);
   packet.printf("OK INFO:%s\n"
                 "Version:%s\n"
                 "ResetReason:%s\n"
                 "RunTimeInMillis:%lu\n"
                 "ResetSource:%s:%s\n"
                 "LocalIP:%s\n"
-                "Mac:%s\n",
+                "Mac:%s\n"
+                "%s",
                 SHI::hw->getNodeName().c_str(), SHI::VERSION.c_str(),
                 SHI::hw->getResetReason().c_str(), millis(),
                 RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
                 RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
-                WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str());
+                WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str(),
+                stats.statString.c_str());
 }
 
 void SHI::MulticastHandler::versionHandler(AsyncUDPPacket &packet) {
