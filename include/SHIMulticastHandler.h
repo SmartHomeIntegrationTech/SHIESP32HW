@@ -4,9 +4,9 @@
 
 namespace SHI {
 
-class SHIMulticastHandler : public SHI::Communicator {
+class MulticastHandler : public SHI::Communicator {
 public:
-  SHIMulticastHandler() : Communicator("Multicast") {
+  MulticastHandler() : Communicator("Multicast") {
     registeredHandlers.insert(
         {"UPDATE", [this](AsyncUDPPacket &packet) { updateHandler(packet); }});
     registeredHandlers.insert(

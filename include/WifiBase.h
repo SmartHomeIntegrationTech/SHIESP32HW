@@ -16,9 +16,9 @@ public:
   virtual size_t write(uint8_t data) = 0;
 };
 
-class HWBase : public SHI::Hardware {
+class ESP32HW : public SHI::Hardware {
 public:
-  HWBase() : Hardware("ESP32") {}
+  ESP32HW() : Hardware("ESP32") {}
   String getNodeName() override;
 
   void setupWatchdog() override;
@@ -80,5 +80,5 @@ private:
   float averageSensorLoopDuration = 0, averageConnectDuration = 0;
 };
 
-extern HWBase hw;
+extern ESP32HW hw;
 } // namespace SHI

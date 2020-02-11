@@ -14,7 +14,7 @@
 #define BUILTIN_LED -1
 #endif
 
-SHI::HWBase SHI::hw;
+SHI::ESP32HW SHI::hw;
 
 namespace {
 #ifndef NO_SERIAL
@@ -58,7 +58,7 @@ void IRAM_ATTR resetModule() {
 
 } // namespace
 
-void SHI::HWBase::errLeds(void) {
+void SHI::ESP32HW::errLeds(void) {
   // Set pin mode
   if (BUILTIN_LED != -1) {
     pinMode(BUILTIN_LED, OUTPUT);
@@ -71,7 +71,7 @@ void SHI::HWBase::errLeds(void) {
   }
 }
 
-void SHI::HWBase::loop() {
+void SHI::ESP32HW::loop() {
   feedWatchdog();
   unsigned long start = millis();
   bool sensorHasFatalError = false;
@@ -114,22 +114,22 @@ void SHI::HWBase::loop() {
     delay(diff);
 }
 
-void SHI::HWBase::setupWatchdog() {
+void SHI::ESP32HW::setupWatchdog() {
   timer = timerBegin(0, 80, true);                  // timer 0, div 80
   timerAttachInterrupt(timer, &resetModule, true);  // attach callback
   timerAlarmWrite(timer, wdtTimeout * 1000, false); // set time in us
   timerAlarmEnable(timer);
 }
 
-void SHI::HWBase::feedWatchdog() {
+void SHI::ESP32HW::feedWatchdog() {
   timerWrite(timer, 0); // reset timer (feed watchdog)
 }
 
-void SHI::HWBase::disableWatchdog() { timerEnd(timer); }
+void SHI::ESP32HW::disableWatchdog() { timerEnd(timer); }
 
-String SHI::HWBase::getResetReason() { return String(config.resetReason); }
+String SHI::ESP32HW::getResetReason() { return String(config.resetReason); }
 
-void SHI::HWBase::resetWithReason(const char *reason, bool restart = true) {
+void SHI::ESP32HW::resetWithReason(const char *reason, bool restart = true) {
   std::memcpy(config.resetReason, reason, sizeof(config.resetReason) - 1);
   config.resetReason[sizeof(config.resetReason) - 1] = 0;
   configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
@@ -140,12 +140,12 @@ void SHI::HWBase::resetWithReason(const char *reason, bool restart = true) {
   }
 }
 
-void SHI::HWBase::resetConfig() {
+void SHI::ESP32HW::resetConfig() {
   config.canary = 0xDEADBEEF;
   configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
 }
 
-void SHI::HWBase::printConfig() {
+void SHI::ESP32HW::printConfig() {
   SHI::hw.logInfo(name, __func__,
                   "IP address:  " + String(config.local_IP, 16));
   SHI::hw.logInfo(name, __func__, "Subnet Mask: " + String(config.subnet, 16));
@@ -155,7 +155,7 @@ void SHI::HWBase::printConfig() {
   SHI::hw.logInfo(name, __func__, "Reset reason:" + String(config.resetReason));
 }
 
-bool SHI::HWBase::updateNodeName() {
+bool SHI::ESP32HW::updateNodeName() {
   HTTPClient http;
   String mac = WiFi.macAddress();
   mac.replace(':', '_');
@@ -178,9 +178,9 @@ bool SHI::HWBase::updateNodeName() {
   return false;
 }
 
-String SHI::HWBase::getNodeName() { return String(config.name); }
+String SHI::ESP32HW::getNodeName() { return String(config.name); }
 
-void SHI::HWBase::wifiDisconnected(WiFiEventInfo_t info) {
+void SHI::ESP32HW::wifiDisconnected(WiFiEventInfo_t info) {
   logInfo(name, __func__,
           "WiFi lost connection. Reason: " + info.disconnected.reason);
   for (auto &&comm : communicators) {
@@ -188,14 +188,14 @@ void SHI::HWBase::wifiDisconnected(WiFiEventInfo_t info) {
   }
 }
 
-void SHI::HWBase::wifiConnected() {
+void SHI::ESP32HW::wifiConnected() {
   logInfo(name, __func__, "Wifi connected");
   for (auto &&comm : communicators) {
     comm->wifiConnected();
   }
 }
 
-void SHI::HWBase::setupSensors() {
+void SHI::ESP32HW::setupSensors() {
   for (auto &&sensor : sensors) {
     String sensorName = sensor->getName();
     logInfo(name, __func__, "Setting up: " + sensorName);
@@ -212,7 +212,7 @@ void SHI::HWBase::setupSensors() {
   }
 }
 
-void SHI::HWBase::setupWifiFromConfig(String defaultName) {
+void SHI::ESP32HW::setupWifiFromConfig(String defaultName) {
   IPAddress primaryDNS(192, 168, 188, 250); // optional
   IPAddress secondaryDNS(192, 168, 188, 1); // optional
   configPrefs.begin(CONFIG);
@@ -250,7 +250,7 @@ void SHI::HWBase::setupWifiFromConfig(String defaultName) {
   WiFi.begin(ssid, password);
 }
 
-void SHI::HWBase::initialWifiConnect() {
+void SHI::ESP32HW::initialWifiConnect() {
   while (WiFi.status() != WL_CONNECTED) {
     if (connectCount > 10) {
       ESP.restart();
@@ -263,7 +263,7 @@ void SHI::HWBase::initialWifiConnect() {
   wifiConnected();
 }
 
-void SHI::HWBase::storeWifiConfig() {
+void SHI::ESP32HW::storeWifiConfig() {
   if (config.canary != CONST_MARKER && updateNodeName()) {
     logInfo(name, __func__, "Storing config");
     config.local_IP = WiFi.localIP();
@@ -279,7 +279,7 @@ void SHI::HWBase::storeWifiConfig() {
   }
 }
 
-void SHI::HWBase::setup(String defaultName) {
+void SHI::ESP32HW::setup(String defaultName) {
   setupWatchdog();
   feedWatchdog();
   debugSerial = &shiSerial;
@@ -307,9 +307,9 @@ void SHI::HWBase::setup(String defaultName) {
   sensorSetupTime = millis() - sensorSetupStart;
 }
 
-void SHI::HWBase::log(String msg) { debugSerial->println(msg); }
+void SHI::ESP32HW::log(String msg) { debugSerial->println(msg); }
 
-bool SHI::HWBase::wifiIsConntected() {
+bool SHI::ESP32HW::wifiIsConntected() {
   unsigned long start = millis();
   while (WiFi.status() != WL_CONNECTED) {
     feedWatchdog();
@@ -329,7 +329,7 @@ bool SHI::HWBase::wifiIsConntected() {
   return true;
 }
 
-void SHI::HWBase::accept(SHI::Visitor &visitor) {
+void SHI::ESP32HW::accept(SHI::Visitor &visitor) {
   visitor.visit(this);
   for (auto &&comm : communicators) {
     comm->accept(visitor);
@@ -339,7 +339,7 @@ void SHI::HWBase::accept(SHI::Visitor &visitor) {
   }
 }
 
-std::vector<std::pair<String, String>> SHI::HWBase::getStatistics() {
+std::vector<std::pair<String, String>> SHI::ESP32HW::getStatistics() {
   return {
       {"connectCount", String(connectCount)}, 
       {"retryCount", String(retryCount)},

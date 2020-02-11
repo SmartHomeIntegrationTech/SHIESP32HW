@@ -42,12 +42,12 @@ private:
 std::shared_ptr<DummySensor> dummy = std::make_shared<DummySensor>();
 std::shared_ptr<SHI::Channel> channel =
     std::make_shared<SHI::Channel>(dummy, "OutsideChannel");
-std::shared_ptr<SHI::SHIRestCommunicator> comms =
-    std::make_shared<SHI::SHIRestCommunicator>();
-std::shared_ptr<SHI::SHIMulticastHandler> multicastComms =
-    std::make_shared<SHI::SHIMulticastHandler>();
-std::shared_ptr<SHI::SHIOLEDDisplay> oled =
-    std::make_shared<SHI::SHIOLEDDisplay>(
+std::shared_ptr<SHI::RestCommunicator> comms =
+    std::make_shared<SHI::RestCommunicator>();
+std::shared_ptr<SHI::MulticastHandler> multicastComms =
+    std::make_shared<SHI::MulticastHandler>();
+std::shared_ptr<SHI::OLEDDisplay> oled =
+    std::make_shared<SHI::OLEDDisplay>(
         std::pair<String, String>(
             {"OutsideChannelDummyHumidity", "Feuchtigkeit"}),
         std::pair<String, String>(

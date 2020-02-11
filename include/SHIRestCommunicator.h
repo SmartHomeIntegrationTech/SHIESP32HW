@@ -6,9 +6,9 @@
 
 namespace SHI {
 
-class SHIRestCommunicator : public SHI::Communicator {
+class RestCommunicator : public SHI::Communicator {
 public:
-  SHIRestCommunicator() : Communicator("OpenhabREST") {}
+  RestCommunicator() : Communicator("OpenhabREST") {}
   void setupCommunication() override {};
   void loopCommunication()  override {};
   void newReading(SHI::SensorReadings &reading, SHI::Sensor &sensor) override;

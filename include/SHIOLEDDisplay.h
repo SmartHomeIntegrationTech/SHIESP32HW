@@ -13,9 +13,9 @@ template <> struct hash<String> {
 
 namespace SHI {
 
-class SHIOLEDDisplay : public SHI::Communicator {
+class OLEDDisplay : public SHI::Communicator {
 public:
-  SHIOLEDDisplay(std::pair<String, String> firstRow = {"", ""},
+  OLEDDisplay(std::pair<String, String> firstRow = {"", ""},
                  std::pair<String, String> secondRow = {"", ""},
                  std::pair<String, String> thirdRow = {"", ""})
       : Communicator("OLEDDisplay") {

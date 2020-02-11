@@ -14,7 +14,7 @@ const String OHREST = "OpenhabRest";
 
 } // namespace
 
-void SHI::SHIRestCommunicator::newReading(SHI::SensorReadings &reading,
+void SHI::RestCommunicator::newReading(SHI::SensorReadings &reading,
                                           SHI::Sensor &sensor) {
   if (!isConnected)
     return;
@@ -30,7 +30,7 @@ void SHI::SHIRestCommunicator::newReading(SHI::SensorReadings &reading,
   uploadInfo(SHI::hw.getNodeName() + sensor.getName(), STATUS_ITEM, STATUS_OK);
 }
 
-void SHI::SHIRestCommunicator::newStatus(SHI::Sensor &sensor, String message,
+void SHI::RestCommunicator::newStatus(SHI::Sensor &sensor, String message,
                                          bool isFatal) {
   if (!isConnected) {
     SHI::hw.logInfo(name, __func__,
@@ -41,11 +41,11 @@ void SHI::SHIRestCommunicator::newStatus(SHI::Sensor &sensor, String message,
   uploadInfo(SHI::hw.getNodeName() + sensor.getName(), STATUS_ITEM, message);
 }
 
-void SHI::SHIRestCommunicator::newHardwareStatus(String message) {
+void SHI::RestCommunicator::newHardwareStatus(String message) {
   uploadInfo(SHI::hw.getNodeName(), STATUS_ITEM, message);
 }
 
-void SHI::SHIRestCommunicator::uploadInfo(String name, String item,
+void SHI::RestCommunicator::uploadInfo(String name, String item,
                                           String value) {
   SHI::hw.logInfo(name, __func__, name + " " + item + " " + value);
   bool tryHard = false;
@@ -69,7 +69,7 @@ void SHI::SHIRestCommunicator::uploadInfo(String name, String item,
   } while (tryHard && retryCount < 15);
 }
 
-void SHI::SHIRestCommunicator::printError(HTTPClient &http, int httpCode) {
+void SHI::RestCommunicator::printError(HTTPClient &http, int httpCode) {
   // httpCode will be negative on error
   if (httpCode > 0) {
     if (httpCode < 200 || httpCode > 299)

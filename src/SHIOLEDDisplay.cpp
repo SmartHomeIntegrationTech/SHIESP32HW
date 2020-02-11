@@ -8,7 +8,7 @@ SSD1306Wire display =
 bool displayUpdated = false;
 } // namespace
 
-void SHI::SHIOLEDDisplay::setupCommunication() {
+void SHI::OLEDDisplay::setupCommunication() {
   display.init();
   display.flipScreenVertically();
   display.setFont(ArialMT_Plain_10);
@@ -18,7 +18,7 @@ void SHI::SHIOLEDDisplay::setupCommunication() {
   SHI::hw.feedWatchdog();
 }
 
-void SHI::SHIOLEDDisplay::loopCommunication() {
+void SHI::OLEDDisplay::loopCommunication() {
   if (displayUpdated) {
     displayUpdated = false;
     display.clear();
@@ -31,7 +31,7 @@ void SHI::SHIOLEDDisplay::loopCommunication() {
   }
 }
 
-void SHI::SHIOLEDDisplay::newReading(SHI::SensorReadings &reading,
+void SHI::OLEDDisplay::newReading(SHI::SensorReadings &reading,
                                      SHI::Sensor &sensor) {
   const String baseName = sensor.getName();
   for (auto &&data : reading.data) {
@@ -44,7 +44,7 @@ void SHI::SHIOLEDDisplay::newReading(SHI::SensorReadings &reading,
   }
 }
 
-void SHI::SHIOLEDDisplay::newStatus(SHI::Sensor &sensor, String message,
+void SHI::OLEDDisplay::newStatus(SHI::Sensor &sensor, String message,
                                     bool isFatal) {
   if (message != STATUS_OK) {
     displayLineBuf[6] = message;
@@ -52,11 +52,11 @@ void SHI::SHIOLEDDisplay::newStatus(SHI::Sensor &sensor, String message,
   }
 }
 
-void SHI::SHIOLEDDisplay::newHardwareStatus(String message) {
+void SHI::OLEDDisplay::newHardwareStatus(String message) {
   displayLineBuf[6] = "HW:" + message;
   displayUpdated = true;
 }
 
-void SHI::SHIOLEDDisplay::setBrightness(uint8_t level) {
+void SHI::OLEDDisplay::setBrightness(uint8_t level) {
   display.setBrightness(level);
 }

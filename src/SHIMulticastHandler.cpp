@@ -21,13 +21,13 @@ PROGMEM const String RESET_SOURCE[] = {
 
 } // namespace
 
-void SHI::SHIMulticastHandler::updateProgress(size_t a, size_t b) {
+void SHI::MulticastHandler::updateProgress(size_t a, size_t b) {
   udpMulticast.printf("OK UPDATE:%s %u/%u\n", SHI::hw.getNodeName().c_str(), a,
                       b);
   SHI::hw.feedWatchdog();
 }
 
-bool SHI::SHIMulticastHandler::isUpdateAvailable() {
+bool SHI::MulticastHandler::isUpdateAvailable() {
   HTTPClient http;
   http.begin("http://192.168.188.250/esp/firmware/" + SHI::hw.getNodeName() +
              ".version");
@@ -42,7 +42,7 @@ bool SHI::SHIMulticastHandler::isUpdateAvailable() {
   return false;
 }
 
-void SHI::SHIMulticastHandler::startUpdate() {
+void SHI::MulticastHandler::startUpdate() {
   HTTPClient http;
   http.begin("http://192.168.188.250/esp/firmware/" + SHI::hw.getNodeName() +
              ".bin");
@@ -84,7 +84,7 @@ void SHI::SHIMulticastHandler::startUpdate() {
   http.end();
 }
 
-void SHI::SHIMulticastHandler::loopCommunication() {
+void SHI::MulticastHandler::loopCommunication() {
   if (doUpdate) {
     if (isUpdateAvailable()) {
       startUpdate();
@@ -97,29 +97,29 @@ void SHI::SHIMulticastHandler::loopCommunication() {
   }
 }
 
-void SHI::SHIMulticastHandler::setupCommunication() {
+void SHI::MulticastHandler::setupCommunication() {
   if (udpMulticast.listenMulticast(IPAddress(239, 1, 23, 42), 2323)) {
-    auto handleUDP = std::bind(&SHI::SHIMulticastHandler::handleUDPPacket, this,
+    auto handleUDP = std::bind(&SHI::MulticastHandler::handleUDPPacket, this,
                                std::placeholders::_1);
     udpMulticast.onPacket(handleUDP);
   }
 }
 
-void SHI::SHIMulticastHandler::updateHandler(AsyncUDPPacket &packet) {
+void SHI::MulticastHandler::updateHandler(AsyncUDPPacket &packet) {
   SHI::hw.logInfo(name, __func__, "UPDATE called");
   packet.printf("OK UPDATE:%s", SHI::hw.getNodeName().c_str());
   packet.flush();
   doUpdate = true;
 }
 
-void SHI::SHIMulticastHandler::resetHandler(AsyncUDPPacket &packet) {
+void SHI::MulticastHandler::resetHandler(AsyncUDPPacket &packet) {
   SHI::hw.logInfo(name, __func__, "RESET called");
   packet.printf("OK RESET:%s", SHI::hw.getNodeName().c_str());
   packet.flush();
   SHI::hw.resetWithReason("UDP RESET request", true);
 }
 
-void SHI::SHIMulticastHandler::reconfHandler(AsyncUDPPacket &packet) {
+void SHI::MulticastHandler::reconfHandler(AsyncUDPPacket &packet) {
   SHI::hw.logInfo(name, __func__, "RECONF called");
   SHI::hw.resetConfig();
   packet.printf("OK RECONF:%s", SHI::hw.getNodeName().c_str());
@@ -127,7 +127,7 @@ void SHI::SHIMulticastHandler::reconfHandler(AsyncUDPPacket &packet) {
   SHI::hw.resetWithReason("UDP RECONF request", true);
 }
 
-void SHI::SHIMulticastHandler::infoHandler(AsyncUDPPacket &packet) {
+void SHI::MulticastHandler::infoHandler(AsyncUDPPacket &packet) {
   SHI::hw.logInfo(name, __func__, "INFO called");
   packet.printf("OK INFO:%s\n"
                 "Version:%s\n"
@@ -143,18 +143,18 @@ void SHI::SHIMulticastHandler::infoHandler(AsyncUDPPacket &packet) {
                 WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str());
 }
 
-void SHI::SHIMulticastHandler::versionHandler(AsyncUDPPacket &packet) {
+void SHI::MulticastHandler::versionHandler(AsyncUDPPacket &packet) {
   SHI::hw.logInfo(name, __func__, "VERSION called");
   packet.printf("OK VERSION:%s\nVersion:%s", SHI::hw.getNodeName().c_str(),
                 SHI::VERSION.c_str());
 }
 
-void SHI::SHIMulticastHandler::addUDPPacketHandler(
+void SHI::MulticastHandler::addUDPPacketHandler(
     String trigger, AuPacketHandlerFunction handler) {
   registeredHandlers[trigger] = handler;
 }
 
-void SHI::SHIMulticastHandler::handleUDPPacket(AsyncUDPPacket &packet) {
+void SHI::MulticastHandler::handleUDPPacket(AsyncUDPPacket &packet) {
   const char *data = (const char *)(packet.data());
   if (packet.length() < 10) {
     auto handler = registeredHandlers[String(data)];
