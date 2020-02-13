@@ -1,12 +1,19 @@
+/*
+ * Copyright (c) 2020 Karsten Becker All rights reserved.
+ * Use of this source code is governed by a BSD-style
+ * license that can be found in the LICENSE file.
+ */
 #include "SHIESP32HW.h"
+
 #include <Arduino.h>
 #include <AsyncUDP.h>
 #include <HTTPClient.h>
 #include <Preferences.h>
 #include <WiFi.h>
+#include <rom/rtc.h>
+
 #include <cstring>
 #include <map>
-#include <rom/rtc.h>
 #include <vector>
 
 #ifndef BUILTIN_LED
@@ -93,9 +100,9 @@ void SHI::ESP32HW::loop() {
           logError(name, __func__,
                    "Sensor " + sensor->getName() + " reported error " + status);
         } else {
-          logWarn(name, __func__,
-                  "Sensor " + sensor->getName() + " reported warning " +
-                      status);
+          logWarn(
+              name, __func__,
+              "Sensor " + sensor->getName() + " reported warning " + status);
         }
       } else {
         for (auto &&comm : communicators) {
@@ -113,8 +120,7 @@ void SHI::ESP32HW::loop() {
   while (sensorHasFatalError) {
     errLeds();
   }
-  if (diff < 1000)
-    delay(diff);
+  if (diff < 1000) delay(diff);
 }
 
 void SHI::ESP32HW::setupWatchdog() {
@@ -172,8 +178,7 @@ bool SHI::ESP32HW::updateNodeName() {
     String newName = http.getString();
     newName.replace('\n', '\0');
     newName.trim();
-    if (newName.length() == 0)
-      return false;
+    if (newName.length() == 0) return false;
     newName.toCharArray(config.name, sizeof(config.name));
     SHI::hw->logInfo(name, __func__, "Recevied new Name:" + newName);
     return true;

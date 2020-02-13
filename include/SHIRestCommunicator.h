@@ -1,9 +1,16 @@
+/*
+ * Copyright (c) 2020 Karsten Becker All rights reserved.
+ * Use of this source code is governed by a BSD-style
+ * license that can be found in the LICENSE file.
+ */
 #pragma once
-#include "SHICommunicator.h"
-#include "SHISensor.h"
 #include <HTTPClient.h>
+
 #include <utility>
 #include <vector>
+
+#include "SHICommunicator.h"
+#include "SHISensor.h"
 
 namespace SHI {
 
@@ -26,4 +33,4 @@ class RestCommunicator : public SHI::Communicator {
   void printError(HTTPClient &http, int httpCode);
 };
 
-} // namespace SHI
+}  // namespace SHI

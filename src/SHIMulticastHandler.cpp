@@ -1,10 +1,17 @@
+/*
+ * Copyright (c) 2020 Karsten Becker All rights reserved.
+ * Use of this source code is governed by a BSD-style
+ * license that can be found in the LICENSE file.
+ */
 #include "SHIMulticastHandler.h"
-#include "SHIHardware.h"
+
 #include <Arduino.h>
 #include <AsyncUDP.h>
 #include <HTTPClient.h>
 #include <Update.h>
 #include <rom/rtc.h>
+
+#include "SHIHardware.h"
 
 namespace {
 
@@ -153,21 +160,22 @@ void SHI::MulticastHandler::infoHandler(AsyncUDPPacket &packet) {
   SHI::hw->logInfo(name, __func__, "INFO called");
   StatsVisitor stats;
   SHI::hw->accept(stats);
-  SHI::hw->logInfo(name, __func__, "Stats:"+stats.statString);
-  packet.printf("OK INFO:%s\n"
-                "Version:%s\n"
-                "ResetReason:%s\n"
-                "RunTimeInMillis:%lu\n"
-                "ResetSource:%s:%s\n"
-                "LocalIP:%s\n"
-                "Mac:%s\n"
-                "%s",
-                SHI::hw->getNodeName().c_str(), SHI::VERSION.c_str(),
-                SHI::hw->getResetReason().c_str(), millis(),
-                RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
-                RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
-                WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str(),
-                stats.statString.c_str());
+  SHI::hw->logInfo(name, __func__, "Stats:" + stats.statString);
+  packet.printf(
+      "OK INFO:%s\n"
+      "Version:%s\n"
+      "ResetReason:%s\n"
+      "RunTimeInMillis:%lu\n"
+      "ResetSource:%s:%s\n"
+      "LocalIP:%s\n"
+      "Mac:%s\n"
+      "%s",
+      SHI::hw->getNodeName().c_str(), SHI::VERSION.c_str(),
+      SHI::hw->getResetReason().c_str(), millis(),
+      RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
+      RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
+      WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str(),
+      stats.statString.c_str());
 }
 
 void SHI::MulticastHandler::versionHandler(AsyncUDPPacket &packet) {

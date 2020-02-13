@@ -1,12 +1,17 @@
+/*
+ * Copyright (c) 2020 Karsten Becker All rights reserved.
+ * Use of this source code is governed by a BSD-style
+ * license that can be found in the LICENSE file.
+ */
 #include <Arduino.h>
+#include <SHIHardware.h>
 #include <SHIMulticastHandler.h>
 #include <SHIOLEDDisplay.h>
 #include <SHIRestCommunicator.h>
 #include <SHIVisitor.h>
-#include <SHIHardware.h>
 
 class DummySensor : public SHI::Sensor {
-public:
+ public:
   DummySensor() : Sensor("Dummy") {}
 
   std::shared_ptr<SHI::SensorReadings> readSensor() {
@@ -31,10 +36,11 @@ public:
       std::make_shared<SHI::SensorData>(new SHI::SensorData(
           {SHI::SensorDataType::FLOAT, SHI::FLOAT_TOSTRING, "Humidity", "%"}));
   std::shared_ptr<SHI::SensorData> temperature =
-      std::make_shared<SHI::SensorData>(new SHI::SensorData(
-          {SHI::SensorDataType::FLOAT, SHI::FLOAT_TOSTRING, "Temperature", "°C"}));
+      std::make_shared<SHI::SensorData>(
+          new SHI::SensorData({SHI::SensorDataType::FLOAT, SHI::FLOAT_TOSTRING,
+                               "Temperature", "°C"}));
 
-private:
+ private:
   std::shared_ptr<SHI::SensorReadings> reading =
       std::make_shared<SHI::SensorReadings>(
           new SHI::SensorReadings({humidity, temperature}));
@@ -46,15 +52,13 @@ std::shared_ptr<SHI::RestCommunicator> comms =
     std::make_shared<SHI::RestCommunicator>();
 std::shared_ptr<SHI::MulticastHandler> multicastComms =
     std::make_shared<SHI::MulticastHandler>();
-std::shared_ptr<SHI::OLEDDisplay> oled =
-    std::make_shared<SHI::OLEDDisplay>(
-        std::pair<String, String>(
-            {"OutsideChannelDummyHumidity", "Feuchtigkeit"}),
-        std::pair<String, String>(
-            {"OutsideChannelDummyTemperature", "Temperatur"}));
+std::shared_ptr<SHI::OLEDDisplay> oled = std::make_shared<SHI::OLEDDisplay>(
+    std::pair<String, String>({"OutsideChannelDummyHumidity", "Feuchtigkeit"}),
+    std::pair<String, String>(
+        {"OutsideChannelDummyTemperature", "Temperatur"}));
 
 class PrintHierachyVisitor : public SHI::Visitor {
-public:
+ public:
   void visit(SHI::Sensor *sensor) override {
     result += " S:" + sensor->getName() + "\n";
   };
@@ -68,7 +72,8 @@ public:
     result += " C:" + communicator->getName() + "\n";
   };
   void visit(SHI::SensorData *data) override {
-    result += "  SD:" + data->name + " unit:"+data->unit+" type:"+String(static_cast<int>(data->type))+"\n";
+    result += "  SD:" + data->name + " unit:" + data->unit +
+              " type:" + String(static_cast<int>(data->type)) + "\n";
   }
   String result = "";
 };

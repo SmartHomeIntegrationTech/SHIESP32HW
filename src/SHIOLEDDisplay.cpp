@@ -1,12 +1,19 @@
+/*
+ * Copyright (c) 2020 Karsten Becker All rights reserved.
+ * Use of this source code is governed by a BSD-style
+ * license that can be found in the LICENSE file.
+ */
 #include "SHIOLEDDisplay.h"
-#include "SHIHardware.h"
+
 #include <oled/SSD1306Wire.h>
+
+#include "SHIHardware.h"
 
 namespace {
 SSD1306Wire display =
     SSD1306Wire(0x3c, SDA_OLED, SCL_OLED, RST_OLED, GEOMETRY_128_64);
 bool displayUpdated = false;
-} // namespace
+}  // namespace
 
 void SHI::OLEDDisplay::setupCommunication() {
   display.init();
@@ -32,20 +39,20 @@ void SHI::OLEDDisplay::loopCommunication() {
 }
 
 void SHI::OLEDDisplay::newReading(SHI::SensorReadings &reading,
-                                     SHI::Sensor &sensor) {
+                                  SHI::Sensor &sensor) {
   const String baseName = sensor.getName();
   for (auto &&data : reading.data) {
     auto sensorName = baseName + data->name;
     auto value = displayItems.find(sensorName);
     if (value != displayItems.end()) {
-      displayLineBuf[(value->second * 2)+1] = data->toTransmitString(*data);
+      displayLineBuf[(value->second * 2) + 1] = data->toTransmitString(*data);
       displayUpdated = true;
     }
   }
 }
 
 void SHI::OLEDDisplay::newStatus(SHI::Sensor &sensor, String message,
-                                    bool isFatal) {
+                                 bool isFatal) {
   if (message != STATUS_OK) {
     displayLineBuf[6] = message;
     displayUpdated = true;

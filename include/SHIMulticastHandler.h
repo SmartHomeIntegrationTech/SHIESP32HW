@@ -1,11 +1,19 @@
-#include "SHICommunicator.h"
+/*
+ * Copyright (c) 2020 Karsten Becker All rights reserved.
+ * Use of this source code is governed by a BSD-style
+ * license that can be found in the LICENSE file.
+ */
+#pragma once
 #include <AsyncUDP.h>
+
 #include <map>
+
+#include "SHICommunicator.h"
 
 namespace SHI {
 
 class MulticastHandler : public SHI::Communicator {
-public:
+ public:
   MulticastHandler() : Communicator("Multicast") {
     registeredHandlers.insert(
         {"UPDATE", [this](AsyncUDPPacket &packet) { updateHandler(packet); }});
@@ -21,13 +29,13 @@ public:
   }
   void setupCommunication() override;
   void loopCommunication() override;
-  void newReading(SHI::SensorReadings &reading, SHI::Sensor &sensor) override {};
-  void newStatus(SHI::Sensor &sensor, String message, bool isFatal)  override {};
-  void newHardwareStatus(String message)  override {};
-  void accept(SHI::Visitor &visitor) override {visitor.visit(this);};
+  void newReading(SHI::SensorReadings &reading, SHI::Sensor &sensor) override {}
+  void newStatus(SHI::Sensor &sensor, String message, bool isFatal) override {}
+  void newHardwareStatus(String message) override{};
+  void accept(SHI::Visitor &visitor) override { visitor.visit(this); }
   void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
 
-private:
+ private:
   void updateHandler(AsyncUDPPacket &packet);
   void resetHandler(AsyncUDPPacket &packet);
   void reconfHandler(AsyncUDPPacket &packet);
@@ -42,4 +50,4 @@ private:
   std::map<String, AuPacketHandlerFunction> registeredHandlers;
 };
 
-} // namespace SHI
+}  // namespace SHI

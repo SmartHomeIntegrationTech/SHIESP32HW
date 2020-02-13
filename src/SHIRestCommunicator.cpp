@@ -1,8 +1,15 @@
+/*
+ * Copyright (c) 2020 Karsten Becker All rights reserved.
+ * Use of this source code is governed by a BSD-style
+ * license that can be found in the LICENSE file.
+ */
 #include "SHIRestCommunicator.h"
-#include "SHISensor.h"
-#include "SHIHardware.h"
+
 #include <Arduino.h>
 #include <HTTPClient.h>
+
+#include "SHIHardware.h"
+#include "SHISensor.h"
 
 namespace {
 
@@ -15,9 +22,8 @@ const String OHREST = "OpenhabRest";
 }  // namespace
 
 void SHI::RestCommunicator::newReading(SHI::SensorReadings &reading,
-                                          SHI::Sensor &sensor) {
-  if (!isConnected)
-    return;
+                                       SHI::Sensor &sensor) {
+  if (!isConnected) return;
   auto sensorName = sensor.getName();
   SHI::hw->feedWatchdog();
   for (auto &&data : reading.data) {
@@ -31,11 +37,11 @@ void SHI::RestCommunicator::newReading(SHI::SensorReadings &reading,
 }
 
 void SHI::RestCommunicator::newStatus(SHI::Sensor &sensor, String message,
-                                         bool isFatal) {
+                                      bool isFatal) {
   if (!isConnected) {
-    SHI::hw->logInfo(name, __func__,
-                    "Not uploading: " + sensor.getName() +
-                        " as currently not connected");
+    SHI::hw->logInfo(
+        name, __func__,
+        "Not uploading: " + sensor.getName() + " as currently not connected");
     return;
   }
   uploadInfo(SHI::hw->getNodeName() + sensor.getName(), STATUS_ITEM, message);
@@ -45,8 +51,7 @@ void SHI::RestCommunicator::newHardwareStatus(String message) {
   uploadInfo(SHI::hw->getNodeName(), STATUS_ITEM, message);
 }
 
-void SHI::RestCommunicator::uploadInfo(String name, String item,
-                                          String value) {
+void SHI::RestCommunicator::uploadInfo(String name, String item, String value) {
   SHI::hw->logInfo(name, __func__, name + " " + item + " " + value);
   bool tryHard = false;
   if (item == STATUS_ITEM && value != STATUS_OK) {
@@ -62,8 +67,7 @@ void SHI::RestCommunicator::uploadInfo(String name, String item,
     int httpCode = http.PUT(value);
     printError(http, httpCode);
     http.end();
-    if (httpCode == 202)
-      return;  // Either return early or try until success
+    if (httpCode == 202) return;  // Either return early or try until success
     retryCount++;
     SHI::hw->feedWatchdog();
   } while (tryHard && retryCount < 15);
@@ -72,8 +76,7 @@ void SHI::RestCommunicator::uploadInfo(String name, String item,
 void SHI::RestCommunicator::printError(HTTPClient &http, int httpCode) {
   // httpCode will be negative on error
   if (httpCode > 0) {
-    if (httpCode < 200 || httpCode > 299)
-      httpErrorCount++;
+    if (httpCode < 200 || httpCode > 299) httpErrorCount++;
     httpCount++;
     // HTTP header has been send and Server response header has been handled
     SHI::hw->logInfo(name, __func__, "response:" + httpCode);
@@ -91,9 +94,7 @@ void SHI::RestCommunicator::printError(HTTPClient &http, int httpCode) {
 }
 
 std::vector<std::pair<String, String>> SHI::RestCommunicator::getStatistics() {
-  return {
-      {"httpFatalErrorCount", String(errorCount)},
-      {"httpErrorCount", String(httpErrorCount)},
-      {"httpCount", String(httpCount)}
-  };
+  return {{"httpFatalErrorCount", String(errorCount)},
+          {"httpErrorCount", String(httpErrorCount)},
+          {"httpCount", String(httpCount)}};
 }

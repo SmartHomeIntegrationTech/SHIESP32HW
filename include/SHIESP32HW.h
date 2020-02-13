@@ -1,23 +1,32 @@
+/*
+ * Copyright (c) 2020 Karsten Becker All rights reserved.
+ * Use of this source code is governed by a BSD-style
+ * license that can be found in the LICENSE file.
+ */
 #pragma once
-#include "SHICommunicator.h"
-#include "SHIHardware.h"
-#include "SHISensor.h"
 #include <Arduino.h>
 #include <AsyncUDP.h>
 #include <Preferences.h>
 #include <WiFi.h>
+
 #include <memory>
+#include <utility>
+#include <vector>
+
+#include "SHICommunicator.h"
+#include "SHIHardware.h"
+#include "SHISensor.h"
 
 namespace SHI {
 
 class SHIPrinter : public Print {
-public:
+ public:
   virtual void begin(int baudRate) = 0;
   virtual size_t write(uint8_t data) = 0;
 };
 
 class ESP32HW : public SHI::Hardware {
-public:
+ public:
   ESP32HW() : Hardware("ESP32") {}
   String getNodeName() override;
 
@@ -28,7 +37,8 @@ public:
   void addSensor(std::shared_ptr<SHI::Sensor> sensor) override {
     sensors.push_back(sensor);
   }
-  void addCommunicator(std::shared_ptr<SHI::Communicator> communicator) override {
+  void addCommunicator(
+      std::shared_ptr<SHI::Communicator> communicator) override {
     communicators.push_back(communicator);
   }
 
@@ -46,10 +56,10 @@ public:
 
   std::vector<std::pair<String, String>> getStatistics() override;
 
-protected:
+ protected:
   void log(String message);
 
-private:
+ private:
   struct config_t {
     uint32_t canary;
     uint32_t local_IP;
@@ -76,8 +86,8 @@ private:
   config_t config;
   hw_timer_t *timer = NULL;
   int connectCount = 0, retryCount = 0;
-  unsigned long sensorSetupTime = 0, initialWifiConnectTime = 0, commSetupTime=0;
+  uint32_t sensorSetupTime = 0, initialWifiConnectTime = 0, commSetupTime = 0;
   float averageSensorLoopDuration = 0, averageConnectDuration = 0;
 };
 
-} // namespace SHI
+}  // namespace SHI
