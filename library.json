@@ -1,5 +1,5 @@
 {
-  "name": "WifiBase",
+  "name": "SmartHomeIntegration",
   "description": "All base code for my SmartHome",
   "keywords": [
     "SmartHome"
@@ -18,8 +18,8 @@
   "dependencies": {
     "WiFi": "1.0",
     "WiFiClientSecure": "1.0",
-    "HTTPClient": "1.2",    
-    "ESP32 Async UDP": "1.0.0",    
+    "HTTPClient": "1.2",
+    "ESP32 Async UDP": "1.0.0",
     "Update": "1.0",
     "Preferences": "1.0",
     "Wire": "1.0.1"
