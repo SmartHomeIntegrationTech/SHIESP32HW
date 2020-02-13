@@ -493,11 +493,11 @@ void OLEDDisplay::drawString(int16_t xMove, int16_t yMove, String strUser) {
 //  unsigned char c = 0,i = 0,j = 0,ch[3];
 //  String strUser;
 //
-//  ch[0] = Num/100 + 48;//����ʮ���Ƶ�48��Ϊ�˸�Num����ASCLL��ĸ�4λ0011 0000��
+//  ch[0] = Num/100 + 48;
 //  ch[1] = Num%100/10 + 48;
 //  ch[2] = Num%10 + 48;
 //
-//  if(ch[0] == 48)     //���ڰ�����ÿλΪ"0"ʱ����ɿո񣨼�����ʾ��
+//  if(ch[0] == 48)     
 //  {
 //      ch[0] = 32;
 //				if(ch[1] == 48)
@@ -959,5 +959,3 @@ char* OLEDDisplay::utf8ascii(String str) {
 void OLEDDisplay::setFontTableLookupFunction(FontTableLookupFunction function) {
   this->fontTableLookupFunction = function;
 }
-
-
