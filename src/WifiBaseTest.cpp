@@ -33,17 +33,17 @@ class DummySensor : public SHI::Sensor {
     }
   };
   std::shared_ptr<SHI::SensorData> humidity =
-      std::make_shared<SHI::SensorData>(new SHI::SensorData(
+      std::make_shared<SHI::SensorData>(SHI::SensorData(
           {SHI::SensorDataType::FLOAT, SHI::FLOAT_TOSTRING, "Humidity", "%"}));
   std::shared_ptr<SHI::SensorData> temperature =
       std::make_shared<SHI::SensorData>(
-          new SHI::SensorData({SHI::SensorDataType::FLOAT, SHI::FLOAT_TOSTRING,
-                               "Temperature", "°C"}));
+          SHI::SensorData({SHI::SensorDataType::FLOAT, SHI::FLOAT_TOSTRING,
+                           "Temperature", "°C"}));
 
  private:
   std::shared_ptr<SHI::SensorReadings> reading =
       std::make_shared<SHI::SensorReadings>(
-          new SHI::SensorReadings({humidity, temperature}));
+          SHI::SensorReadings({humidity, temperature}));
 };
 std::shared_ptr<DummySensor> dummy = std::make_shared<DummySensor>();
 std::shared_ptr<SHI::Channel> channel =

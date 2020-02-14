@@ -7,11 +7,13 @@
 #include <SHISensor.h>
 namespace SHI {
 
-String FLOAT_TOSTRING(SHI::SensorData &data) {
+String FLOAT_TOSTRING(const SHI::SensorData &data) {
   return String(data.floatValue, 1);
 }
-String INT_TOSTRING(SHI::SensorData &data) { return String(data.intValue); }
-String STRING_TOSTRING(SHI::SensorData &data) {
+String INT_TOSTRING(const SHI::SensorData &data) {
+  return String(data.intValue);
+}
+String STRING_TOSTRING(const SHI::SensorData &data) {
   return String(data.stringValue);
 }
 

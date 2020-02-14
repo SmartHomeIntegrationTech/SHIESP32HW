@@ -21,7 +21,7 @@ const String OHREST = "OpenhabRest";
 
 }  // namespace
 
-void SHI::RestCommunicator::newReading(SHI::SensorReadings &reading,
+void SHI::RestCommunicator::newReading(const SHI::SensorReadings &reading,
                                        SHI::Sensor &sensor) {
   if (!isConnected) return;
   auto sensorName = sensor.getName();

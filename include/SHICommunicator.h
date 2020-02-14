@@ -15,7 +15,8 @@ class Communicator : public SHI::SHIObject {
   virtual void wifiDisconnected() { isConnected = false; }
   virtual void setupCommunication() = 0;
   virtual void loopCommunication() = 0;
-  virtual void newReading(SHI::SensorReadings &reading, SHI::Sensor &sensor) {}
+  virtual void newReading(const SHI::SensorReadings &reading,
+                          SHI::Sensor &sensor) {}
   virtual void newStatus(SHI::Sensor &sensor, String message, bool isFatal) {}
   virtual void newHardwareStatus(String message) {}
 

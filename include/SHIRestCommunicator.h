@@ -19,7 +19,8 @@ class RestCommunicator : public SHI::Communicator {
   RestCommunicator() : Communicator("OpenhabREST") {}
   void setupCommunication() override {}
   void loopCommunication() override {}
-  void newReading(SHI::SensorReadings &reading, SHI::Sensor &sensor) override;
+  void newReading(const SHI::SensorReadings &reading,
+                  SHI::Sensor &sensor) override;
   void newStatus(SHI::Sensor &sensor, String message, bool isFatal) override;
   void newHardwareStatus(String message) override;
   void accept(SHI::Visitor &visitor) override { visitor.visit(this); }

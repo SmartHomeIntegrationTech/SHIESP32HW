@@ -38,7 +38,7 @@ void SHI::OLEDDisplay::loopCommunication() {
   }
 }
 
-void SHI::OLEDDisplay::newReading(SHI::SensorReadings &reading,
+void SHI::OLEDDisplay::newReading(const SHI::SensorReadings &reading,
                                   SHI::Sensor &sensor) {
   const String baseName = sensor.getName();
   for (auto &&data : reading.data) {
