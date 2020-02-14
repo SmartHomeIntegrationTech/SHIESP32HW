@@ -65,9 +65,8 @@ class Sensor : public SHI::SHIObject {
   virtual std::shared_ptr<SensorReadings> readSensor() = 0;
   virtual bool setupSensor() = 0;
   virtual bool stopSensor() = 0;
-  virtual String const getStatusMessage() { return statusMessage; }
-  virtual bool const errorIsFatal() { return fatalError; }
-  virtual String const getName() { return name; }
+  virtual String getStatusMessage() const { return statusMessage; }
+  virtual bool errorIsFatal() const { return fatalError; }
 
  protected:
   explicit Sensor(String name) : SHIObject(name) {}
@@ -85,11 +84,11 @@ class Channel : public SHI::Sensor {
   bool setupSensor() override { return sensor->setupSensor(); }
   bool stopSensor() override { return sensor->stopSensor(); }
   void accept(SHI::Visitor &visitor) override;
-  String const getStatusMessage() override {
+  String getStatusMessage() const override {
     return sensor->getStatusMessage();
   }
-  bool const errorIsFatal() override { return sensor->errorIsFatal(); }
-  String const getName() override { return name + sensor->getName(); }
+  bool errorIsFatal() const override { return sensor->errorIsFatal(); }
+  String getName() const override { return name + sensor->getName(); }
   const std::shared_ptr<Sensor> sensor;
 };
 

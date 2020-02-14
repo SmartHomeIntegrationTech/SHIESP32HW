@@ -22,7 +22,7 @@ const String OHREST = "OpenhabRest";
 }  // namespace
 
 void SHI::RestCommunicator::newReading(const SHI::SensorReadings &reading,
-                                       SHI::Sensor &sensor) {
+                                       const SHI::Sensor &sensor) {
   if (!isConnected) return;
   auto sensorName = sensor.getName();
   SHI::hw->feedWatchdog();
@@ -36,8 +36,8 @@ void SHI::RestCommunicator::newReading(const SHI::SensorReadings &reading,
   uploadInfo(SHI::hw->getNodeName() + sensor.getName(), STATUS_ITEM, STATUS_OK);
 }
 
-void SHI::RestCommunicator::newStatus(SHI::Sensor &sensor, String message,
-                                      bool isFatal) {
+void SHI::RestCommunicator::newStatus(const SHI::Sensor &sensor,
+                                      const String &message, bool isFatal) {
   if (!isConnected) {
     SHI::hw->logInfo(
         name, __func__,
@@ -47,7 +47,7 @@ void SHI::RestCommunicator::newStatus(SHI::Sensor &sensor, String message,
   uploadInfo(SHI::hw->getNodeName() + sensor.getName(), STATUS_ITEM, message);
 }
 
-void SHI::RestCommunicator::newHardwareStatus(String message) {
+void SHI::RestCommunicator::newHardwareStatus(const String &message) {
   uploadInfo(SHI::hw->getNodeName(), STATUS_ITEM, message);
 }
 
@@ -65,7 +65,7 @@ void SHI::RestCommunicator::uploadInfo(String name, String item, String value) {
     http.setConnectTimeout(CONNECT_TIMEOUT);
     http.setTimeout(DATA_TIMEOUT);
     int httpCode = http.PUT(value);
-    printError(http, httpCode);
+    printError(&http, httpCode);
     http.end();
     if (httpCode == 202) return;  // Either return early or try until success
     retryCount++;
@@ -73,7 +73,7 @@ void SHI::RestCommunicator::uploadInfo(String name, String item, String value) {
   } while (tryHard && retryCount < 15);
 }
 
-void SHI::RestCommunicator::printError(HTTPClient &http, int httpCode) {
+void SHI::RestCommunicator::printError(HTTPClient *http, int httpCode) {
   // httpCode will be negative on error
   if (httpCode > 0) {
     if (httpCode < 200 || httpCode > 299) httpErrorCount++;
@@ -82,7 +82,7 @@ void SHI::RestCommunicator::printError(HTTPClient &http, int httpCode) {
     SHI::hw->logInfo(name, __func__, "response:" + httpCode);
 
     if (httpCode == HTTP_CODE_OK) {
-      /// String payload = http.getString();
+      /// String payload = http->getString();
       // if (!payload.isEmpty())
       // SHI::hw->logInfo(name, __func__, "Response payload was:" + payload);
     }

@@ -20,9 +20,10 @@ class RestCommunicator : public SHI::Communicator {
   void setupCommunication() override {}
   void loopCommunication() override {}
   void newReading(const SHI::SensorReadings &reading,
-                  SHI::Sensor &sensor) override;
-  void newStatus(SHI::Sensor &sensor, String message, bool isFatal) override;
-  void newHardwareStatus(String message) override;
+                  const SHI::Sensor &sensor) override;
+  void newStatus(const SHI::Sensor &sensor, const String &message,
+                 bool isFatal) override;
+  void newHardwareStatus(const String &message) override;
   void accept(SHI::Visitor &visitor) override { visitor.visit(this); }
   std::vector<std::pair<String, String>> getStatistics() override;
 
@@ -31,7 +32,7 @@ class RestCommunicator : public SHI::Communicator {
 
  private:
   void uploadInfo(String name, String item, String value);
-  void printError(HTTPClient &http, int httpCode);
+  void printError(HTTPClient *http, int httpCode);
 };
 
 }  // namespace SHI

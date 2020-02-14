@@ -39,7 +39,7 @@ void SHI::OLEDDisplay::loopCommunication() {
 }
 
 void SHI::OLEDDisplay::newReading(const SHI::SensorReadings &reading,
-                                  SHI::Sensor &sensor) {
+                                  const SHI::Sensor &sensor) {
   const String baseName = sensor.getName();
   for (auto &&data : reading.data) {
     auto sensorName = baseName + data->name;
@@ -51,15 +51,15 @@ void SHI::OLEDDisplay::newReading(const SHI::SensorReadings &reading,
   }
 }
 
-void SHI::OLEDDisplay::newStatus(SHI::Sensor &sensor, String message,
-                                 bool isFatal) {
+void SHI::OLEDDisplay::newStatus(const SHI::Sensor &sensor,
+                                 const String &message, bool isFatal) {
   if (message != STATUS_OK) {
     displayLineBuf[6] = message;
     displayUpdated = true;
   }
 }
 
-void SHI::OLEDDisplay::newHardwareStatus(String message) {
+void SHI::OLEDDisplay::newHardwareStatus(const String &message) {
   displayLineBuf[6] = "HW:" + message;
   displayUpdated = true;
 }
