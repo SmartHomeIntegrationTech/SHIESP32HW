@@ -28,7 +28,7 @@ void SHI::RestCommunicator::newReading(const SHI::SensorReadings &reading,
   SHI::hw->feedWatchdog();
   for (auto &&data : reading.data) {
     if (data->type != SHI::SensorDataType::NO_DATA) {
-      uploadInfo(SHI::hw->getNodeName(), sensorName + data->name,
+      uploadInfo(SHI::hw->getNodeName(), String(sensorName) + data->name,
                  data->toTransmitString(*data));
       SHI::hw->feedWatchdog();
     }

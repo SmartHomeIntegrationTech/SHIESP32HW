@@ -23,6 +23,7 @@
     "Update": "1.0",
     "Preferences": "1.0",
     "Wire": "1.0.1",
-    "ESP32 BLE Arduino": "1.0.1"
+    "ESP32 BLE Arduino": "1.0.1",
+    "SmartHomeIntegrationTech": "0.2.0"
   }
 }

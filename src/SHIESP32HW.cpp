@@ -107,7 +107,7 @@ void SHI::ESP32HW::loop() {
       auto reading = sensor->readSensor();
       logInfo(name, __func__, "Reading sensor:" + String(sensor->getName()));
       if (reading == nullptr) {
-        auto status = sensor->getStatusMessage().c_str();
+        auto status = sensor->getStatusMessage();
         auto isFatal = sensor->errorIsFatal();
         for (auto &&comm : communicators) {
           comm->newStatus(*sensor, status, isFatal);

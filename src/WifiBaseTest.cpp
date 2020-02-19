@@ -75,7 +75,7 @@ class PrintHierachyVisitor : public SHI::Visitor {
     result += " C:" + String(communicator->getName()) + "\n";
   };
   void visit(SHI::SensorData *data) override {
-    result += "  SD:" + data->name + " unit:" + data->unit +
+    result += String("  SD:") + data->name + " unit:" + data->unit +
               " type:" + String(static_cast<int>(data->type)) + "\n";
   }
   String result = "";

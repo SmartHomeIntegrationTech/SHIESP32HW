@@ -7,22 +7,25 @@
 #include <SHISensor.h>
 namespace SHI {
 
-String FLOAT_TOSTRING(const SHI::SensorData &data) {
-  return String(data.floatValue, 1);
+const char* FLOAT_TOSTRING(const SHI::SensorData& data) {
+  char* buf = new char[33];
+  return dtostrf(data.floatValue, (1 + 2), 1, buf);
 }
-String INT_TOSTRING(const SHI::SensorData &data) {
-  return String(data.intValue);
+const char* INT_TOSTRING(const SHI::SensorData& data) {
+  char* buf = new char[2 + 8 * sizeof(int)];
+  snprintf(buf, 2 + 8 * sizeof(int), "%d", data.intValue);
+  return buf;
 }
-String STRING_TOSTRING(const SHI::SensorData &data) {
-  return String(data.stringValue);
+const char* STRING_TOSTRING(const SHI::SensorData& data) {
+  return data.stringValue;
 }
 
-const String STATUS_ITEM = "Status";
-const String STATUS_OK = "OK";
+const char* STATUS_ITEM = "Status";
+const char* STATUS_OK = "OK";
 
 }  // namespace SHI
 
-void SHI::Channel::accept(SHI::Visitor &visitor) {
+void SHI::Channel::accept(SHI::Visitor& visitor) {
   visitor.visit(this);
   sensor->accept(visitor);
 }

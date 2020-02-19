@@ -16,15 +16,15 @@
 // SHI stands for SmartHomeIntegration
 namespace SHI {
 
-extern const String STATUS_ITEM;
-extern const String STATUS_OK;
+extern const char *STATUS_ITEM;
+extern const char *STATUS_OK;
 
 enum class SensorDataType { INT, FLOAT, STRING, NO_DATA };
 
 struct SensorData {
   SensorData(SensorDataType type,
-             std::function<String(const SensorData &)> toTransmitString,
-             String name, String unit = "")
+             std::function<const char *(const SensorData &)> toTransmitString,
+             const char *name, const char *unit = "")
       : type(type),
         toTransmitString(toTransmitString),
         name(name),
@@ -36,9 +36,9 @@ struct SensorData {
         unit(data.unit),
         intValue(data.intValue) {}
   SensorDataType type;
-  std::function<String(const SensorData &)> toTransmitString;
-  const String name;
-  const String unit;
+  std::function<const char *(const SensorData &)> toTransmitString;
+  const char *name;
+  const char *unit;
   union {
     float floatValue;
     int intValue;
@@ -60,12 +60,12 @@ class Sensor : public SHI::SHIObject {
   virtual std::shared_ptr<SensorReadings> readSensor() = 0;
   virtual bool setupSensor() = 0;
   virtual bool stopSensor() = 0;
-  virtual String getStatusMessage() const { return statusMessage; }
+  virtual const char *getStatusMessage() const { return statusMessage; }
   virtual bool errorIsFatal() const { return fatalError; }
 
  protected:
   explicit Sensor(const char *name) : SHIObject(name) {}
-  String statusMessage = SHI::STATUS_OK;
+  const char *statusMessage = SHI::STATUS_OK;
   bool fatalError = false;
 };
 
@@ -79,7 +79,7 @@ class Channel : public SHI::Sensor {
   bool setupSensor() override { return sensor->setupSensor(); }
   bool stopSensor() override { return sensor->stopSensor(); }
   void accept(SHI::Visitor &visitor) override;
-  String getStatusMessage() const override {
+  const char *getStatusMessage() const override {
     return sensor->getStatusMessage();
   }
   bool errorIsFatal() const override { return sensor->errorIsFatal(); }
@@ -90,8 +90,8 @@ class Channel : public SHI::Sensor {
   const std::shared_ptr<Sensor> sensor;
 };
 
-String FLOAT_TOSTRING(const SHI::SensorData &data);
-String INT_TOSTRING(const SHI::SensorData &data);
-String STRING_TOSTRING(const SHI::SensorData &data);
+const char *FLOAT_TOSTRING(const SHI::SensorData &data);
+const char *INT_TOSTRING(const SHI::SensorData &data);
+const char *STRING_TOSTRING(const SHI::SensorData &data);
 
 }  // namespace SHI
