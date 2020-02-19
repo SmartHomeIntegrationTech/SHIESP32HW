@@ -134,34 +134,34 @@ void SHI::MulticastHandler::setupCommunication() {
   }
 }
 
-void SHI::MulticastHandler::updateHandler(AsyncUDPPacket &packet) {
+void SHI::MulticastHandler::updateHandler(AsyncUDPPacket *packet) {
   SHI::hw->logInfo(name, __func__, "UPDATE called");
-  packet.printf("OK UPDATE:%s", SHI::hw->getNodeName().c_str());
-  packet.flush();
+  packet->printf("OK UPDATE:%s", SHI::hw->getNodeName().c_str());
+  packet->flush();
   doUpdate = true;
 }
 
-void SHI::MulticastHandler::resetHandler(AsyncUDPPacket &packet) {
+void SHI::MulticastHandler::resetHandler(AsyncUDPPacket *packet) {
   SHI::hw->logInfo(name, __func__, "RESET called");
-  packet.printf("OK RESET:%s", SHI::hw->getNodeName().c_str());
-  packet.flush();
+  packet->printf("OK RESET:%s", SHI::hw->getNodeName().c_str());
+  packet->flush();
   SHI::hw->resetWithReason("UDP RESET request", true);
 }
 
-void SHI::MulticastHandler::reconfHandler(AsyncUDPPacket &packet) {
+void SHI::MulticastHandler::reconfHandler(AsyncUDPPacket *packet) {
   SHI::hw->logInfo(name, __func__, "RECONF called");
   SHI::hw->resetConfig();
-  packet.printf("OK RECONF:%s", SHI::hw->getNodeName().c_str());
-  packet.flush();
+  packet->printf("OK RECONF:%s", SHI::hw->getNodeName().c_str());
+  packet->flush();
   SHI::hw->resetWithReason("UDP RECONF request", true);
 }
 
-void SHI::MulticastHandler::infoHandler(AsyncUDPPacket &packet) {
+void SHI::MulticastHandler::infoHandler(AsyncUDPPacket *packet) {
   SHI::hw->logInfo(name, __func__, "INFO called");
   StatsVisitor stats;
   SHI::hw->accept(stats);
   SHI::hw->logInfo(name, __func__, "Stats:" + stats.statString);
-  packet.printf(
+  packet->printf(
       "OK INFO:%s\n"
       "Version:%s\n"
       "ResetReason:%s\n"
@@ -176,12 +176,13 @@ void SHI::MulticastHandler::infoHandler(AsyncUDPPacket &packet) {
       RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
       WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str(),
       stats.statString.c_str());
+  packet->flush();
 }
 
-void SHI::MulticastHandler::versionHandler(AsyncUDPPacket &packet) {
+void SHI::MulticastHandler::versionHandler(AsyncUDPPacket *packet) {
   SHI::hw->logInfo(name, __func__, "VERSION called");
-  packet.printf("OK VERSION:%s\nVersion:%s", SHI::hw->getNodeName().c_str(),
-                SHI::VERSION.c_str());
+  packet->printf("OK VERSION:%s\nVersion:%s", SHI::hw->getNodeName().c_str(),
+                 SHI::VERSION.c_str());
 }
 
 void SHI::MulticastHandler::addUDPPacketHandler(

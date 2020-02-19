@@ -4,6 +4,9 @@
  * license that can be found in the LICENSE file.
  */
 #include <Arduino.h>
+#ifdef IS_BEACON
+#include <SHIBLEBeacon.h>
+#endif
 #include <SHIHardware.h>
 #include <SHIMulticastHandler.h>
 #include <SHIOLEDDisplay.h>
@@ -92,6 +95,9 @@ void setup() {
   PrintHierachyVisitor visitor;
   SHI::hw->accept(visitor);
   SHI::hw->logInfo("WifiBaseTest", __func__, visitor.result);
+#ifdef IS_BEACON
+  setupBeacon();
+#endif
 }
 void loop() {
   SHI::hw->loop();

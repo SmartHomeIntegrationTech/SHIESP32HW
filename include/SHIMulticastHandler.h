@@ -16,15 +16,15 @@ class MulticastHandler : public SHI::Communicator {
  public:
   MulticastHandler() : Communicator("Multicast") {
     registeredHandlers.insert(
-        {"UPDATE", [this](AsyncUDPPacket &packet) { updateHandler(packet); }});
+        {"UPDATE", [this](AsyncUDPPacket &packet) { updateHandler(&packet); }});
     registeredHandlers.insert(
-        {"RESET", [this](AsyncUDPPacket &packet) { resetHandler(packet); }});
+        {"RESET", [this](AsyncUDPPacket &packet) { resetHandler(&packet); }});
     registeredHandlers.insert(
-        {"RECONF", [this](AsyncUDPPacket &packet) { reconfHandler(packet); }});
+        {"RECONF", [this](AsyncUDPPacket &packet) { reconfHandler(&packet); }});
     registeredHandlers.insert(
-        {"INFO", [this](AsyncUDPPacket &packet) { infoHandler(packet); }});
+        {"INFO", [this](AsyncUDPPacket &packet) { infoHandler(&packet); }});
     registeredHandlers.insert({"VERSION", [this](AsyncUDPPacket &packet) {
-                                 versionHandler(packet);
+                                 versionHandler(&packet);
                                }});
   }
   void setupCommunication() override;
@@ -38,11 +38,11 @@ class MulticastHandler : public SHI::Communicator {
   void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
 
  private:
-  void updateHandler(AsyncUDPPacket &packet);
-  void resetHandler(AsyncUDPPacket &packet);
-  void reconfHandler(AsyncUDPPacket &packet);
-  void infoHandler(AsyncUDPPacket &packet);
-  void versionHandler(AsyncUDPPacket &packet);
+  void updateHandler(AsyncUDPPacket *packet);
+  void resetHandler(AsyncUDPPacket *packet);
+  void reconfHandler(AsyncUDPPacket *spacket);
+  void infoHandler(AsyncUDPPacket *packet);
+  void versionHandler(AsyncUDPPacket *packet);
   void handleUDPPacket(AsyncUDPPacket &packet);
   void updateProgress(size_t a, size_t b);
   bool isUpdateAvailable();
