@@ -63,7 +63,8 @@ bool SHI::MulticastHandler::isUpdateAvailable() {
   int httpCode = http.GET();
   if (httpCode == 200) {
     String remoteVersion = http.getString();
-    SHI::hw->logInfo(name, __func__, "Remote version is:" + remoteVersion);
+    SHI::hw->logInfo(name, __func__,
+                     ("Remote version is:" + remoteVersion).c_str());
     return String(SHI::VERSION).compareTo(remoteVersion) < 0;
   }
   return false;
@@ -156,7 +157,7 @@ void SHI::MulticastHandler::infoHandler(AsyncUDPPacket *packet) {
   SHI::hw->logInfo(name, __func__, "INFO called");
   StatsVisitor stats;
   SHI::hw->accept(stats);
-  SHI::hw->logInfo(name, __func__, "Stats:" + stats.statString);
+  SHI::hw->logInfo(name, __func__, ("Stats:" + stats.statString).c_str());
   packet->printf(
       "OK INFO:%s\n"
       "Version:%s\n"

@@ -94,7 +94,7 @@ void setup() {
   dummy->temperature->floatValue = 25;
   PrintHierachyVisitor visitor;
   SHI::hw->accept(visitor);
-  SHI::hw->logInfo("WifiBaseTest", __func__, visitor.result);
+  SHI::hw->logInfo("WifiBaseTest", __func__, visitor.result.c_str());
 #ifdef IS_BEACON
   setupBeacon();
 #endif

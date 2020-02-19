@@ -8,6 +8,7 @@
 #include <SHIObject.h>
 
 #include <memory>
+#include <string>
 
 namespace SHI {
 
@@ -36,19 +37,19 @@ class Hardware : public SHI::SHIObject {
   virtual void setup(const char *defaultName) = 0;
   virtual void loop() = 0;
 
-  void logInfo(String name, const char *func, String message) {
-    log("INFO: " + name + "." + func + "() " + message);
+  void logInfo(const char *name, const char *func, const char *message) {
+    log((std::string("INFO: ") + name + "." + func + "() " + message).c_str());
   }
-  void logWarn(String name, const char *func, String message) {
-    log("WARN: " + name + "." + func + "() " + message);
+  void logWarn(const char *name, const char *func, const char *message) {
+    log((std::string("WARN: ") + name + "." + func + "() " + message).c_str());
   }
-  void logError(String name, const char *func, String message) {
-    log("ERROR: " + name + "." + func + "() " + message);
+  void logError(const char *name, const char *func, const char *message) {
+    log((std::string("ERROR: ") + name + "." + func + "() " + message).c_str());
   }
 
  protected:
   explicit Hardware(const char *name) : SHIObject(name) {}
-  virtual void log(String message) = 0;
+  virtual void log(const char *message) = 0;
 };
 
 extern SHI::Hardware *hw;

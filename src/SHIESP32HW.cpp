@@ -173,15 +173,12 @@ void SHI::ESP32HW::resetConfig() {
 }
 
 void SHI::ESP32HW::printConfig() {
-  SHI::hw->logInfo(name, __func__,
-                   "IP address:  " + String(config.local_IP, 16));
-  SHI::hw->logInfo(name, __func__, "Subnet Mask: " + String(config.subnet, 16));
-  SHI::hw->logInfo(name, __func__,
-                   "Gateway IP:  " + String(config.gateway, 16));
-  SHI::hw->logInfo(name, __func__, "Canary:      " + String(config.canary, 16));
-  SHI::hw->logInfo(name, __func__, "Name:        " + String(config.name));
-  SHI::hw->logInfo(name, __func__,
-                   "Reset reason:" + String(config.resetReason));
+  logInfo(name, __func__, "IP address:  " + String(config.local_IP, 16));
+  logInfo(name, __func__, "Subnet Mask: " + String(config.subnet, 16));
+  logInfo(name, __func__, "Gateway IP:  " + String(config.gateway, 16));
+  logInfo(name, __func__, "Canary:      " + String(config.canary, 16));
+  logInfo(name, __func__, "Name:        " + String(config.name));
+  logInfo(name, __func__, "Reset reason:" + String(config.resetReason));
 }
 
 bool SHI::ESP32HW::updateNodeName() {
@@ -198,10 +195,10 @@ bool SHI::ESP32HW::updateNodeName() {
     newName.trim();
     if (newName.length() == 0) return false;
     newName.toCharArray(config.name, sizeof(config.name));
-    SHI::hw->logInfo(name, __func__, "Recevied new Name:" + newName);
+    logInfo(name, __func__, "Recevied new Name:" + newName);
     return true;
   } else {
-    SHI::hw->logInfo(name, __func__, "Failed to update name for mac:" + mac);
+    logInfo(name, __func__, "Failed to update name for mac:" + mac);
   }
   return false;
 }
@@ -336,7 +333,8 @@ void SHI::ESP32HW::setup(const char *defaultName) {
   sensorSetupTime = millis() - sensorSetupStart;
 }
 
-void SHI::ESP32HW::log(String msg) { debugSerial->println(msg); }
+void SHI::ESP32HW::log(const String &msg) { debugSerial->println(msg); }
+void SHI::ESP32HW::log(const char *msg) { debugSerial->println(msg); }
 
 bool SHI::ESP32HW::wifiIsConntected() {
   uint32_t start = millis();

@@ -41,8 +41,9 @@ void SHI::RestCommunicator::newStatus(const SHI::Sensor &sensor,
                                       const char *message, bool isFatal) {
   if (!isConnected) {
     SHI::hw->logInfo(name, __func__,
-                     "Not uploading: " + String(sensor.getName()) +
-                         " as currently not connected");
+                     ("Not uploading: " + String(sensor.getName()) +
+                      " as currently not connected")
+                         .c_str());
     return;
   }
   uploadInfo(String(SHI::hw->getNodeName()) + String(sensor.getName()),
@@ -53,8 +54,10 @@ void SHI::RestCommunicator::newHardwareStatus(const char *message) {
   uploadInfo(SHI::hw->getNodeName(), STATUS_ITEM, message);
 }
 
-void SHI::RestCommunicator::uploadInfo(String name, String item, String value) {
-  SHI::hw->logInfo(name, __func__, name + " " + item + " " + value);
+void SHI::RestCommunicator::uploadInfo(String valueName, String item,
+                                       String value) {
+  SHI::hw->logInfo(name, __func__,
+                   (valueName + " " + item + " " + value).c_str());
   bool tryHard = false;
   if (item == STATUS_ITEM && value != STATUS_OK) {
     tryHard = true;
@@ -62,8 +65,8 @@ void SHI::RestCommunicator::uploadInfo(String name, String item, String value) {
   int retryCount = 0;
   do {
     HTTPClient http;
-    http.begin("http://192.168.188.250:8080/rest/items/esp32" + name + item +
-               "/state");
+    http.begin("http://192.168.188.250:8080/rest/items/esp32" + valueName +
+               item + "/state");
     http.setConnectTimeout(CONNECT_TIMEOUT);
     http.setTimeout(DATA_TIMEOUT);
     int httpCode = http.PUT(value);

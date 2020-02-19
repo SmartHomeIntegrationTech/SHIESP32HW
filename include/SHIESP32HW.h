@@ -56,8 +56,19 @@ class ESP32HW : public SHI::Hardware {
 
   std::vector<std::pair<String, String>> getStatistics() override;
 
+  void logInfo(const char *name, const char *func, const String &message) {
+    log("INFO: " + String(name) + "." + String(func) + "() " + message);
+  }
+  void logWarn(const char *name, const char *func, const String &message) {
+    log("INFO: " + String(name) + "." + String(func) + "() " + message);
+  }
+  void logError(const char *name, const char *func, const String &message) {
+    log("INFO: " + String(name) + "." + String(func) + "() " + message);
+  }
+
  protected:
-  void log(String message);
+  void log(const String &message);
+  void log(const char *message);
 
  private:
   struct config_t {
