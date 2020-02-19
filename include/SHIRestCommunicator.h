@@ -4,6 +4,7 @@
  * license that can be found in the LICENSE file.
  */
 #pragma once
+#include <Arduino.h>
 #include <HTTPClient.h>
 
 #include <utility>
@@ -25,7 +26,7 @@ class RestCommunicator : public SHI::Communicator {
                  bool isFatal) override;
   void newHardwareStatus(const char *message) override;
   void accept(SHI::Visitor &visitor) override { visitor.visit(this); }
-  std::vector<std::pair<String, String>> getStatistics() override;
+  std::vector<std::pair<const char *, const char *>> getStatistics() override;
 
  protected:
   int errorCount = 0, httpErrorCount = 0, httpCount = 0;

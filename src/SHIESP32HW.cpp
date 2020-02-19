@@ -366,14 +366,15 @@ void SHI::ESP32HW::accept(SHI::Visitor &visitor) {
   }
 }
 
-std::vector<std::pair<String, String>> SHI::ESP32HW::getStatistics() {
+std::vector<std::pair<const char *, const char *>>
+SHI::ESP32HW::getStatistics() {
   return {
-      {"connectCount", String(connectCount)},
-      {"retryCount", String(retryCount)},
-      {"initialWifiConnectTime", String(initialWifiConnectTime)},
-      {"commSetupTime", String(commSetupTime)},
-      {"sensorSetupTime", String(sensorSetupTime)},
-      {"averageSensorLoopDuration", String(averageSensorLoopDuration)},
-      {"averageConnectDuration", String(averageConnectDuration)},
+      {"connectCount", String(connectCount).c_str()},
+      {"retryCount", String(retryCount).c_str()},
+      {"initialWifiConnectTime", String(initialWifiConnectTime).c_str()},
+      {"commSetupTime", String(commSetupTime).c_str()},
+      {"sensorSetupTime", String(sensorSetupTime).c_str()},
+      {"averageSensorLoopDuration", String(averageSensorLoopDuration).c_str()},
+      {"averageConnectDuration", String(averageConnectDuration).c_str()},
   };
 }

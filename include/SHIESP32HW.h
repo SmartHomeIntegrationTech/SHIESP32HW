@@ -54,7 +54,7 @@ class ESP32HW : public SHI::Hardware {
 
   void accept(SHI::Visitor &visitor) override;
 
-  std::vector<std::pair<String, String>> getStatistics() override;
+  std::vector<std::pair<const char *, const char *>> getStatistics() override;
 
   void logInfo(const char *name, const char *func, const String &message) {
     log("INFO: " + String(name) + "." + String(func) + "() " + message);

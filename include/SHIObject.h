@@ -4,7 +4,6 @@
  * license that can be found in the LICENSE file.
  */
 #pragma once
-#include <Arduino.h>
 
 #include <memory>
 #include <utility>
@@ -19,7 +18,9 @@ class SHIObject {
   explicit SHIObject(const char *name) : name(name) {}
   virtual const char *getName() const { return name; }
   virtual void accept(SHI::Visitor &visitor) = 0;
-  virtual std::vector<std::pair<String, String>> getStatistics() { return {}; }
+  virtual std::vector<std::pair<const char *, const char *>> getStatistics() {
+    return {};
+  }
 
  protected:
   const char *name;

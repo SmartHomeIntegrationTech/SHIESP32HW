@@ -4,6 +4,8 @@
  * license that can be found in the LICENSE file.
  */
 #pragma once
+#include <Arduino.h>
+
 #include <string>
 #include <unordered_map>
 #include <utility>

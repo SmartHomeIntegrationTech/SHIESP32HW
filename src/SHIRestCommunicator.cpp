@@ -98,8 +98,9 @@ void SHI::RestCommunicator::printError(HTTPClient *http, int httpCode) {
   }
 }
 
-std::vector<std::pair<String, String>> SHI::RestCommunicator::getStatistics() {
-  return {{"httpFatalErrorCount", String(errorCount)},
-          {"httpErrorCount", String(httpErrorCount)},
-          {"httpCount", String(httpCount)}};
+std::vector<std::pair<const char *, const char *>>
+SHI::RestCommunicator::getStatistics() {
+  return {{"httpFatalErrorCount", String(errorCount).c_str()},
+          {"httpErrorCount", String(httpErrorCount).c_str()},
+          {"httpCount", String(httpCount).c_str()}};
 }
