@@ -17,12 +17,12 @@ class Communicator : public SHI::SHIObject {
   virtual void loopCommunication() = 0;
   virtual void newReading(const SHI::SensorReadings &reading,
                           const SHI::Sensor &sensor) {}
-  virtual void newStatus(const SHI::Sensor &sensor, const String &message,
+  virtual void newStatus(const SHI::Sensor &sensor, const char *message,
                          bool isFatal) {}
-  virtual void newHardwareStatus(const String &message) {}
+  virtual void newHardwareStatus(const char *message) {}
 
  protected:
-  explicit Communicator(String name) : SHIObject(name) {}
+  explicit Communicator(const char *name) : SHIObject(name) {}
   bool isConnected = false;
 };
 

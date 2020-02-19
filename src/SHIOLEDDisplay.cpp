@@ -51,16 +51,17 @@ void SHI::OLEDDisplay::newReading(const SHI::SensorReadings &reading,
   }
 }
 
-void SHI::OLEDDisplay::newStatus(const SHI::Sensor &sensor,
-                                 const String &message, bool isFatal) {
-  if (message != STATUS_OK) {
-    displayLineBuf[6] = message;
+void SHI::OLEDDisplay::newStatus(const SHI::Sensor &sensor, const char *message,
+                                 bool isFatal) {
+  auto msg = String(message);
+  if (msg != STATUS_OK) {
+    displayLineBuf[6] = msg;
     displayUpdated = true;
   }
 }
 
-void SHI::OLEDDisplay::newHardwareStatus(const String &message) {
-  displayLineBuf[6] = "HW:" + message;
+void SHI::OLEDDisplay::newHardwareStatus(const char *message) {
+  displayLineBuf[6] = "HW:" + String(message);
   displayUpdated = true;
 }
 

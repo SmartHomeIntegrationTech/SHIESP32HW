@@ -29,20 +29,20 @@ class StatsVisitor : public SHI::Visitor {
  public:
   void visit(SHI::Sensor *sensor) {
     for (auto &&stat : sensor->getStatistics()) {
-      statString +=
-          sensor->getName() + "." + stat.first + ":" + stat.second + "\n";
+      statString += String(sensor->getName()) + "." + stat.first + ":" +
+                    stat.second + "\n";
     }
   }
   void visit(SHI::Hardware *hardware) {
     for (auto &&stat : hardware->getStatistics()) {
-      statString +=
-          hardware->getName() + "." + stat.first + ":" + stat.second + "\n";
+      statString += String(hardware->getName()) + "." + stat.first + ":" +
+                    stat.second + "\n";
     }
   }
   void visit(SHI::Communicator *communicator) {
     for (auto &&stat : communicator->getStatistics()) {
-      statString +=
-          communicator->getName() + "." + stat.first + ":" + stat.second + "\n";
+      statString += String(communicator->getName()) + "." + stat.first + ":" +
+                    stat.second + "\n";
     }
   }
   String statString = "";

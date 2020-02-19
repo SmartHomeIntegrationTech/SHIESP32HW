@@ -88,9 +88,9 @@ void SHI::ESP32HW::loop() {
   if (wifiIsConntected()) {
     for (auto &&sensor : sensors) {
       auto reading = sensor->readSensor();
-      logInfo(name, __func__, "Reading sensor:" + sensor->getName());
+      logInfo(name, __func__, "Reading sensor:" + String(sensor->getName()));
       if (reading == nullptr) {
-        auto status = sensor->getStatusMessage();
+        auto status = sensor->getStatusMessage().c_str();
         auto isFatal = sensor->errorIsFatal();
         for (auto &&comm : communicators) {
           comm->newStatus(*sensor, status, isFatal);
@@ -98,11 +98,12 @@ void SHI::ESP32HW::loop() {
         if (isFatal) {
           sensorHasFatalError = true;
           logError(name, __func__,
-                   "Sensor " + sensor->getName() + " reported error " + status);
+                   "Sensor " + String(sensor->getName()) + " reported error " +
+                       status);
         } else {
-          logWarn(
-              name, __func__,
-              "Sensor " + sensor->getName() + " reported warning " + status);
+          logWarn(name, __func__,
+                  "Sensor " + String(sensor->getName()) + " reported warning " +
+                      status);
         }
       } else {
         for (auto &&comm : communicators) {
@@ -302,9 +303,10 @@ void SHI::ESP32HW::setup(String defaultName) {
   initialWifiConnect();
   storeWifiConfig();
   initialWifiConnectTime = millis() - intialWifiConnectStart;
-  auto hwStatus = "STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
-                  RESET_SOURCE[rtc_get_reset_reason(1)] + " " +
-                  String(config.resetReason);
+  auto hwStatus =
+      ("STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
+       RESET_SOURCE[rtc_get_reset_reason(1)] + " " + String(config.resetReason))
+          .c_str();
   uint32_t commSetupStart = millis();
   for (auto &&comm : communicators) {
     comm->setupCommunication();

@@ -42,7 +42,7 @@ class Hardware : public SHI::SHIObject {
   }
 
  protected:
-  explicit Hardware(String name) : SHIObject(name) {}
+  explicit Hardware(const char *name) : SHIObject(name) {}
   virtual void log(String message) = 0;
 };
 

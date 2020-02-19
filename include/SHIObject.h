@@ -16,13 +16,13 @@ namespace SHI {
 
 class SHIObject {
  public:
-  explicit SHIObject(String name) : name(name) {}
-  virtual String getName() const { return name; }
+  explicit SHIObject(const char *name) : name(name) {}
+  virtual const char *getName() const { return name; }
   virtual void accept(SHI::Visitor &visitor) = 0;
   virtual std::vector<std::pair<String, String>> getStatistics() { return {}; }
 
  protected:
-  String name;
+  const char *name;
 };
 
 }  // namespace SHI

@@ -37,17 +37,17 @@ void SHI::RestCommunicator::newReading(const SHI::SensorReadings &reading,
 }
 
 void SHI::RestCommunicator::newStatus(const SHI::Sensor &sensor,
-                                      const String &message, bool isFatal) {
+                                      const char *message, bool isFatal) {
   if (!isConnected) {
-    SHI::hw->logInfo(
-        name, __func__,
-        "Not uploading: " + sensor.getName() + " as currently not connected");
+    SHI::hw->logInfo(name, __func__,
+                     "Not uploading: " + String(sensor.getName()) +
+                         " as currently not connected");
     return;
   }
   uploadInfo(SHI::hw->getNodeName() + sensor.getName(), STATUS_ITEM, message);
 }
 
-void SHI::RestCommunicator::newHardwareStatus(const String &message) {
+void SHI::RestCommunicator::newHardwareStatus(const char *message) {
   uploadInfo(SHI::hw->getNodeName(), STATUS_ITEM, message);
 }
 

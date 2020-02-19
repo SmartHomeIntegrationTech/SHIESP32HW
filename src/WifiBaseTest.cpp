@@ -63,16 +63,16 @@ std::shared_ptr<SHI::OLEDDisplay> oled = std::make_shared<SHI::OLEDDisplay>(
 class PrintHierachyVisitor : public SHI::Visitor {
  public:
   void visit(SHI::Sensor *sensor) override {
-    result += " S:" + sensor->getName() + "\n";
+    result += " S:" + String(sensor->getName()) + "\n";
   };
   void visit(SHI::Channel *channel) override {
-    result += " CH:" + channel->getName() + "\n";
+    result += " CH:" + String(channel->getName()) + "\n";
   };
   void visit(SHI::Hardware *harwdware) override {
-    result += harwdware->getName() + "\n";
+    result += String(harwdware->getName()) + "\n";
   };
   void visit(SHI::Communicator *communicator) override {
-    result += " C:" + communicator->getName() + "\n";
+    result += " C:" + String(communicator->getName()) + "\n";
   };
   void visit(SHI::SensorData *data) override {
     result += "  SD:" + data->name + " unit:" + data->unit +

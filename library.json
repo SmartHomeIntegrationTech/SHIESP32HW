@@ -1,14 +1,14 @@
 {
-  "name": "SmartHomeIntegration",
-  "description": "All base code for my SmartHome",
+  "name": "SmartHomeIntegrationESP32",
+  "description": "An implementation of SHIT for ESP32",
   "keywords": [
     "SmartHome"
   ],
   "authors": [
     {
       "name": "Karsten Becker",
-      "email": "kb@karsten-becker.de",
-      "url": "http://karsten-becker.de",
+      "email": "kb@shi.technology",
+      "url": "https://shi.technology",
       "maintainer": true
     }
   ],

@@ -21,9 +21,9 @@ class RestCommunicator : public SHI::Communicator {
   void loopCommunication() override {}
   void newReading(const SHI::SensorReadings &reading,
                   const SHI::Sensor &sensor) override;
-  void newStatus(const SHI::Sensor &sensor, const String &message,
+  void newStatus(const SHI::Sensor &sensor, const char *message,
                  bool isFatal) override;
-  void newHardwareStatus(const String &message) override;
+  void newHardwareStatus(const char *message) override;
   void accept(SHI::Visitor &visitor) override { visitor.visit(this); }
   std::vector<std::pair<String, String>> getStatistics() override;
 
