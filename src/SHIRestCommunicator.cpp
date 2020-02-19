@@ -33,7 +33,8 @@ void SHI::RestCommunicator::newReading(const SHI::SensorReadings &reading,
       SHI::hw->feedWatchdog();
     }
   }
-  uploadInfo(SHI::hw->getNodeName() + sensor.getName(), STATUS_ITEM, STATUS_OK);
+  uploadInfo(String(SHI::hw->getNodeName()) + String(sensor.getName()),
+             STATUS_ITEM, STATUS_OK);
 }
 
 void SHI::RestCommunicator::newStatus(const SHI::Sensor &sensor,
@@ -44,7 +45,8 @@ void SHI::RestCommunicator::newStatus(const SHI::Sensor &sensor,
                          " as currently not connected");
     return;
   }
-  uploadInfo(SHI::hw->getNodeName() + sensor.getName(), STATUS_ITEM, message);
+  uploadInfo(String(SHI::hw->getNodeName()) + String(sensor.getName()),
+             STATUS_ITEM, message);
 }
 
 void SHI::RestCommunicator::newHardwareStatus(const char *message) {

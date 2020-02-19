@@ -28,7 +28,7 @@ class SHIPrinter : public Print {
 class ESP32HW : public SHI::Hardware {
  public:
   ESP32HW() : Hardware("ESP32") {}
-  String getNodeName() override;
+  const char *getNodeName() override;
 
   void setupWatchdog() override;
   void feedWatchdog() override;
@@ -42,11 +42,11 @@ class ESP32HW : public SHI::Hardware {
     communicators.push_back(communicator);
   }
 
-  String getResetReason() override;
+  const char *getResetReason() override;
   void resetWithReason(const char *reason, bool restart) override;
   void errLeds(void) override;
 
-  void setup(String altName) override;
+  void setup(const char *altName) override;
   void loop() override;
 
   void printConfig() override;
@@ -72,7 +72,7 @@ class ESP32HW : public SHI::Hardware {
   void wifiDoSetup(String defaultName);
   bool updateNodeName();
   void setupSensors();
-  void setupWifiFromConfig(String defaultName);
+  void setupWifiFromConfig(const char *defaultName);
   void initialWifiConnect();
   void storeWifiConfig();
 

@@ -19,11 +19,6 @@ namespace SHI {
 extern const String STATUS_ITEM;
 extern const String STATUS_OK;
 
-extern const uint8_t MAJOR_VERSION;
-extern const uint8_t MINOR_VERSION;
-extern const uint8_t PATCH_VERSION;
-extern const String VERSION;
-
 enum class SensorDataType { INT, FLOAT, STRING, NO_DATA };
 
 struct SensorData {

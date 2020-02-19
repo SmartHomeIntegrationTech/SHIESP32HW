@@ -68,6 +68,23 @@ void IRAM_ATTR resetModule() {
 
 SHI::Hardware *SHI::hw = &instance;
 
+#ifndef VER_MAJ
+#error "Major version undefined"
+#endif
+#ifndef VER_MIN
+#error "Minor version undefined"
+#endif
+#ifndef VER_PAT
+#error "Patch version undefined"
+#endif
+const uint8_t SHI::MAJOR_VERSION = VER_MAJ;
+const uint8_t SHI::MINOR_VERSION = VER_MIN;
+const uint8_t SHI::PATCH_VERSION = VER_PAT;
+const char *SHI::VERSION =
+    (String(SHI::MAJOR_VERSION, 10) + "." + String(SHI::MINOR_VERSION, 10) +
+     "." + String(SHI::PATCH_VERSION, 10))
+        .c_str();
+
 void SHI::ESP32HW::errLeds(void) {
   // Set pin mode
   if (BUILTIN_LED != -1) {
@@ -137,7 +154,7 @@ void SHI::ESP32HW::feedWatchdog() {
 
 void SHI::ESP32HW::disableWatchdog() { timerEnd(timer); }
 
-String SHI::ESP32HW::getResetReason() { return String(config.resetReason); }
+const char *SHI::ESP32HW::getResetReason() { return config.resetReason; }
 
 void SHI::ESP32HW::resetWithReason(const char *reason, bool restart = true) {
   std::memcpy(config.resetReason, reason, sizeof(config.resetReason) - 1);
@@ -189,7 +206,7 @@ bool SHI::ESP32HW::updateNodeName() {
   return false;
 }
 
-String SHI::ESP32HW::getNodeName() { return String(config.name); }
+const char *SHI::ESP32HW::getNodeName() { return config.name; }
 
 void SHI::ESP32HW::wifiDisconnected(WiFiEventInfo_t info) {
   logInfo(name, __func__,
@@ -223,7 +240,7 @@ void SHI::ESP32HW::setupSensors() {
   }
 }
 
-void SHI::ESP32HW::setupWifiFromConfig(String defaultName) {
+void SHI::ESP32HW::setupWifiFromConfig(const char *defaultName) {
   IPAddress primaryDNS(192, 168, 188, 250);  // optional
   IPAddress secondaryDNS(192, 168, 188, 1);  // optional
   configPrefs.begin(CONFIG);
@@ -239,7 +256,7 @@ void SHI::ESP32HW::setupWifiFromConfig(String defaultName) {
   } else {
     logInfo(name, __func__,
             "Canary mismatch, stored: " + String(config.canary, 16));
-    defaultName.toCharArray(config.name, sizeof(config.name));
+    snprintf(config.name, sizeof(config.name), "%s", defaultName);
   }
 
   feedWatchdog();
@@ -290,7 +307,7 @@ void SHI::ESP32HW::storeWifiConfig() {
   }
 }
 
-void SHI::ESP32HW::setup(String defaultName) {
+void SHI::ESP32HW::setup(const char *defaultName) {
   setupWatchdog();
   feedWatchdog();
   debugSerial = &shiSerial;

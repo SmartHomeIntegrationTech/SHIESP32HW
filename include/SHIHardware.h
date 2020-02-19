@@ -11,6 +11,11 @@
 
 namespace SHI {
 
+extern const uint8_t MAJOR_VERSION;
+extern const uint8_t MINOR_VERSION;
+extern const uint8_t PATCH_VERSION;
+extern const char *VERSION;
+
 class Hardware : public SHI::SHIObject {
  public:
   virtual void resetWithReason(const char *reason, bool restart) = 0;
@@ -20,15 +25,15 @@ class Hardware : public SHI::SHIObject {
   virtual void feedWatchdog() = 0;
   virtual void disableWatchdog() = 0;
 
-  virtual String getNodeName() = 0;
-  virtual String getResetReason() = 0;
+  virtual const char *getNodeName() = 0;
+  virtual const char *getResetReason() = 0;
   virtual void resetConfig() = 0;
   virtual void printConfig() = 0;
 
   virtual void addSensor(std::shared_ptr<SHI::Sensor> sensor) = 0;
   virtual void addCommunicator(
       std::shared_ptr<SHI::Communicator> communicator) = 0;
-  virtual void setup(String defaultName) = 0;
+  virtual void setup(const char *defaultName) = 0;
   virtual void loop() = 0;
 
   void logInfo(String name, const char *func, String message) {
