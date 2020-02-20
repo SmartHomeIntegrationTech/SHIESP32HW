@@ -20,7 +20,7 @@ class RestCommunicator : public SHI::Communicator {
   RestCommunicator() : Communicator("OpenhabREST") {}
   void setupCommunication() override {}
   void loopCommunication() override {}
-  void newReading(const SHI::SensorReadings &reading,
+  void newReading(const SHI::MeasurementBundle &reading,
                   const SHI::Sensor &sensor) override;
   void newStatus(const SHI::Sensor &sensor, const char *message,
                  bool isFatal) override;
@@ -32,7 +32,7 @@ class RestCommunicator : public SHI::Communicator {
   int errorCount = 0, httpErrorCount = 0, httpCount = 0;
 
  private:
-  void uploadInfo(String name, String item, String value);
+  void uploadInfo(String valueName, String item, String value);
   void printError(HTTPClient *http, int httpCode);
 };
 

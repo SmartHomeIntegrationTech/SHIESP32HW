@@ -101,43 +101,10 @@ void SHI::ESP32HW::errLeds(void) {
 void SHI::ESP32HW::loop() {
   feedWatchdog();
   uint32_t start = millis();
-  bool sensorHasFatalError = false;
-  if (wifiIsConntected()) {
-    for (auto &&sensor : sensors) {
-      auto reading = sensor->readSensor();
-      logInfo(name, __func__, "Reading sensor:" + String(sensor->getName()));
-      if (reading == nullptr) {
-        auto status = sensor->getStatusMessage();
-        auto isFatal = sensor->errorIsFatal();
-        for (auto &&comm : communicators) {
-          comm->newStatus(*sensor, status, isFatal);
-        }
-        if (isFatal) {
-          sensorHasFatalError = true;
-          logError(name, __func__,
-                   "Sensor " + String(sensor->getName()) + " reported error " +
-                       status);
-        } else {
-          logWarn(name, __func__,
-                  "Sensor " + String(sensor->getName()) + " reported warning " +
-                      status);
-        }
-      } else {
-        for (auto &&comm : communicators) {
-          comm->newReading(*reading, *sensor);
-        }
-      }
-    }
-  }
-  for (auto &&comm : communicators) {
-    comm->loopCommunication();
-  }
+  wifiIsConntected();
+
   uint32_t diff = millis() - start;
   averageSensorLoopDuration = ((averageSensorLoopDuration * 9) + diff) / 10.;
-
-  while (sensorHasFatalError) {
-    errLeds();
-  }
   if (diff < 1000) delay(diff);
 }
 
@@ -209,14 +176,14 @@ void SHI::ESP32HW::wifiDisconnected(WiFiEventInfo_t info) {
   logInfo(name, __func__,
           "WiFi lost connection. Reason: " + info.disconnected.reason);
   for (auto &&comm : communicators) {
-    comm->wifiDisconnected();
+    comm->networkDisconnected();
   }
 }
 
 void SHI::ESP32HW::wifiConnected() {
   logInfo(name, __func__, "Wifi connected");
   for (auto &&comm : communicators) {
-    comm->wifiConnected();
+    comm->networkConnected();
   }
 }
 

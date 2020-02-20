@@ -39,7 +39,7 @@ class OLEDDisplay : public SHI::Communicator {
   }
   void setupCommunication() override;
   void loopCommunication() override;
-  void newReading(const SHI::SensorReadings &reading,
+  void newReading(const SHI::MeasurementBundle &reading,
                   const SHI::Sensor &sensor) override;
   void newStatus(const SHI::Sensor &sensor, const char *message,
                  bool isFatal) override;

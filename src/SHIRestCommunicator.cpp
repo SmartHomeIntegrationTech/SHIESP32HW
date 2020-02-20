@@ -21,19 +21,20 @@ const String OHREST = "OpenhabRest";
 
 }  // namespace
 
-void SHI::RestCommunicator::newReading(const SHI::SensorReadings &reading,
+void SHI::RestCommunicator::newReading(const SHI::MeasurementBundle &reading,
                                        const SHI::Sensor &sensor) {
   if (!isConnected) return;
   auto sensorName = sensor.getName();
   SHI::hw->feedWatchdog();
   for (auto &&data : reading.data) {
-    if (data->type != SHI::SensorDataType::NO_DATA) {
-      uploadInfo(SHI::hw->getNodeName(), String(sensorName) + data->name,
-                 data->toTransmitString(*data));
+    if (data.getDataState() == SHI::MeasurementDataState::VALID) {
+      uploadInfo(SHI::hw->getNodeName(),
+                 (String(sensorName) + data.getMetaData()->name).c_str(),
+                 data.toTransmitString().c_str());
       SHI::hw->feedWatchdog();
     }
   }
-  uploadInfo(String(SHI::hw->getNodeName()) + String(sensor.getName()),
+  uploadInfo((String(SHI::hw->getNodeName()) + sensor.getName()).c_str(),
              STATUS_ITEM, STATUS_OK);
 }
 
@@ -84,7 +85,8 @@ void SHI::RestCommunicator::printError(HTTPClient *http, int httpCode) {
     if (httpCode < 200 || httpCode > 299) httpErrorCount++;
     httpCount++;
     // HTTP header has been send and Server response header has been handled
-    SHI::hw->logInfo(name, __func__, "response:" + httpCode);
+    SHI::hw->logInfo(name, __func__,
+                     ("response:" + String(httpCode, 10)).c_str());
 
     if (httpCode == HTTP_CODE_OK) {
       /// String payload = http->getString();
@@ -94,7 +96,8 @@ void SHI::RestCommunicator::printError(HTTPClient *http, int httpCode) {
   } else {
     errorCount++;
     // ets_printf(http.errorToString(httpCode).c_str());
-    SHI::hw->logInfo(name, __func__, "Failed " + httpCode);
+    SHI::hw->logInfo(name, __func__,
+                     ("Failed " + String(httpCode, 10)).c_str());
   }
 }
 

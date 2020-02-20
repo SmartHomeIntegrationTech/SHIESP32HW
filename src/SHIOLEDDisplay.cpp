@@ -38,14 +38,15 @@ void SHI::OLEDDisplay::loopCommunication() {
   }
 }
 
-void SHI::OLEDDisplay::newReading(const SHI::SensorReadings &reading,
+void SHI::OLEDDisplay::newReading(const SHI::MeasurementBundle &reading,
                                   const SHI::Sensor &sensor) {
   const String baseName = sensor.getName();
   for (auto &&data : reading.data) {
-    auto sensorName = baseName + data->name;
+    auto sensorName = baseName + data.getMetaData()->name;
     auto value = displayItems.find(sensorName);
     if (value != displayItems.end()) {
-      displayLineBuf[(value->second * 2) + 1] = data->toTransmitString(*data);
+      displayLineBuf[(value->second * 2) + 1] =
+          String(data.toTransmitString().c_str());
       displayUpdated = true;
     }
   }

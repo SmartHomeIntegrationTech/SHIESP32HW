@@ -17,36 +17,37 @@ class DummySensor : public SHI::Sensor {
  public:
   DummySensor() : Sensor("Dummy") {}
 
-  std::shared_ptr<SHI::SensorReadings> readSensor() {
+  std::vector<SHI::MeasurementBundle> readSensor() override {
+    static int count = 0;
     SHI::hw->logInfo(name, __func__, "Loop Dummy Sensor");
-    return reading;
+    auto humMeasure = humidty.measuredFloat(humidtyValue);
+    SHI::Measurement tempMeasure =
+        count++ >= 10 ? temperature.measuredNoData()
+                      : temperature.measuredFloat(temperatureValue);
+    if (count > 11) count = 0;
+    return {SHI::MeasurementBundle({humMeasure, tempMeasure}, this)};
   }
-  bool setupSensor() {
+  bool setupSensor() override {
     SHI::hw->logInfo(name, __func__, "Setup Dummy Sensor");
     return true;
   }
-  bool stopSensor() {
+  bool stopSensor() override {
     SHI::hw->logInfo(name, __func__, "Stop Dummy Sensor");
     return true;
   }
   void accept(SHI::Visitor &visitor) override {
     visitor.visit(this);
-    for (auto &&data : reading->data) {
-      visitor.visit(&*data);
-    }
-  };
-  std::shared_ptr<SHI::SensorData> humidity =
-      std::make_shared<SHI::SensorData>(SHI::SensorData(
-          {SHI::SensorDataType::FLOAT, SHI::FLOAT_TOSTRING, "Humidity", "%"}));
-  std::shared_ptr<SHI::SensorData> temperature =
-      std::make_shared<SHI::SensorData>(
-          SHI::SensorData({SHI::SensorDataType::FLOAT, SHI::FLOAT_TOSTRING,
-                           "Temperature", "°C"}));
+    visitor.visit(&humidty);
+    visitor.visit(&temperature);
+  }
+  SHI::MeasurementMetaData humidty =
+      SHI::MeasurementMetaData("Humidity", "%", SHI::SensorDataType::FLOAT);
+  SHI::MeasurementMetaData temperature =
+      SHI::MeasurementMetaData("Temperature", "°C", SHI::SensorDataType::FLOAT);
+  float humidtyValue = 0;
+  float temperatureValue = 0;
 
  private:
-  std::shared_ptr<SHI::SensorReadings> reading =
-      std::make_shared<SHI::SensorReadings>(
-          SHI::SensorReadings({humidity, temperature}));
 };
 std::shared_ptr<DummySensor> dummy = std::make_shared<DummySensor>();
 std::shared_ptr<SHI::Channel> channel =
@@ -74,7 +75,7 @@ class PrintHierachyVisitor : public SHI::Visitor {
   void visit(SHI::Communicator *communicator) override {
     result += " C:" + String(communicator->getName()) + "\n";
   };
-  void visit(SHI::SensorData *data) override {
+  void visit(SHI::MeasurementMetaData *data) override {
     result += String("  SD:") + data->name + " unit:" + data->unit +
               " type:" + String(static_cast<int>(data->type)) + "\n";
   }
@@ -90,8 +91,8 @@ void setup() {
   oled->setBrightness(5);
   SHI::hw->addSensor(channel);
   SHI::hw->setup("Test");
-  dummy->humidity->floatValue = 10.4;
-  dummy->temperature->floatValue = 25;
+  dummy->humidtyValue = 10.4;
+  dummy->temperatureValue = 25;
   PrintHierachyVisitor visitor;
   SHI::hw->accept(visitor);
   SHI::hw->logInfo("WifiBaseTest", __func__, visitor.result.c_str());
@@ -101,7 +102,7 @@ void setup() {
 }
 void loop() {
   SHI::hw->loop();
-  dummy->humidity->floatValue += 1;
-  dummy->temperature->floatValue += 2.3;
+  dummy->humidtyValue += 1;
+  dummy->temperatureValue += 2.3;
   delay(1000);
 }

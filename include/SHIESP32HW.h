@@ -34,14 +34,6 @@ class ESP32HW : public SHI::Hardware {
   void feedWatchdog() override;
   void disableWatchdog() override;
 
-  void addSensor(std::shared_ptr<SHI::Sensor> sensor) override {
-    sensors.push_back(sensor);
-  }
-  void addCommunicator(
-      std::shared_ptr<SHI::Communicator> communicator) override {
-    communicators.push_back(communicator);
-  }
-
   const char *getResetReason() override;
   void resetWithReason(const char *reason, bool restart) override;
   void errLeds(void) override;
@@ -90,8 +82,6 @@ class ESP32HW : public SHI::Hardware {
   void wifiDisconnected(WiFiEventInfo_t info);
   void wifiConnected();
 
-  std::vector<std::shared_ptr<SHI::Sensor>> sensors;
-  std::vector<std::shared_ptr<SHI::Communicator>> communicators;
   SHIPrinter *debugSerial;
   Preferences configPrefs;
   config_t config;
