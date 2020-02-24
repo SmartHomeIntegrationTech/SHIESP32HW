@@ -63,8 +63,7 @@ bool SHI::MulticastHandler::isUpdateAvailable() {
   int httpCode = http.GET();
   if (httpCode == 200) {
     String remoteVersion = http.getString();
-    SHI::hw->logInfo(name, __func__,
-                     ("Remote version is:" + remoteVersion).c_str());
+    SHI_LOGINFO(("Remote version is:" + remoteVersion).c_str());
     return String(SHI::VERSION).compareTo(remoteVersion) < 0;
   }
   return false;
@@ -115,7 +114,7 @@ void SHI::MulticastHandler::loopCommunication() {
     if (isUpdateAvailable()) {
       startUpdate();
     } else {
-      SHI::hw->logInfo(name, __func__, "No newer version available");
+      SHI_LOGINFO("No newer version available");
       udpMulticast.printf("OK UPDATE:%s No update available\n",
                           SHI::hw->getNodeName());
     }
@@ -132,21 +131,21 @@ void SHI::MulticastHandler::setupCommunication() {
 }
 
 void SHI::MulticastHandler::updateHandler(AsyncUDPPacket *packet) {
-  SHI::hw->logInfo(name, __func__, "UPDATE called");
+  SHI_LOGINFO("UPDATE called");
   packet->printf("OK UPDATE:%s", SHI::hw->getNodeName());
   packet->flush();
   doUpdate = true;
 }
 
 void SHI::MulticastHandler::resetHandler(AsyncUDPPacket *packet) {
-  SHI::hw->logInfo(name, __func__, "RESET called");
+  SHI_LOGINFO("RESET called");
   packet->printf("OK RESET:%s", SHI::hw->getNodeName());
   packet->flush();
   SHI::hw->resetWithReason("UDP RESET request", true);
 }
 
 void SHI::MulticastHandler::reconfHandler(AsyncUDPPacket *packet) {
-  SHI::hw->logInfo(name, __func__, "RECONF called");
+  SHI_LOGINFO("RECONF called");
   SHI::hw->resetConfig();
   packet->printf("OK RECONF:%s", SHI::hw->getNodeName());
   packet->flush();
@@ -154,10 +153,10 @@ void SHI::MulticastHandler::reconfHandler(AsyncUDPPacket *packet) {
 }
 
 void SHI::MulticastHandler::infoHandler(AsyncUDPPacket *packet) {
-  SHI::hw->logInfo(name, __func__, "INFO called");
+  SHI_LOGINFO("INFO called");
   StatsVisitor stats;
   SHI::hw->accept(stats);
-  SHI::hw->logInfo(name, __func__, ("Stats:" + stats.statString).c_str());
+  SHI_LOGINFO(("Stats:" + stats.statString).c_str());
   packet->printf(
       "OK INFO:%s\n"
       "Version:%s\n"
@@ -176,7 +175,7 @@ void SHI::MulticastHandler::infoHandler(AsyncUDPPacket *packet) {
 }
 
 void SHI::MulticastHandler::versionHandler(AsyncUDPPacket *packet) {
-  SHI::hw->logInfo(name, __func__, "VERSION called");
+  SHI_LOGINFO("VERSION called");
   packet->printf("OK VERSION:%s\nVersion:%s", SHI::hw->getNodeName(),
                  SHI::VERSION);
 }

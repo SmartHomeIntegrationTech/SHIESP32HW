@@ -34,7 +34,6 @@ class MulticastHandler : public SHI::Communicator {
   void newStatus(const SHI::Sensor &sensor, const char *message,
                  bool isFatal) override {}
   void newHardwareStatus(const char *message) override {}
-  void accept(SHI::Visitor &visitor) override { visitor.visit(this); }
   void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
 
  private:

@@ -44,8 +44,6 @@ class ESP32HW : public SHI::Hardware {
   void printConfig() override;
   void resetConfig() override;
 
-  void accept(SHI::Visitor &visitor) override;
-
   std::vector<std::pair<const char *, const char *>> getStatistics() override;
 
   void logInfo(const char *name, const char *func, const String &message) {
@@ -74,7 +72,6 @@ class ESP32HW : public SHI::Hardware {
   bool wifiIsConntected();
   void wifiDoSetup(String defaultName);
   bool updateNodeName();
-  void setupSensors();
   void setupWifiFromConfig(const char *defaultName);
   void initialWifiConnect();
   void storeWifiConfig();

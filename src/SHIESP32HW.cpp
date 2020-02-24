@@ -66,6 +66,13 @@ void IRAM_ATTR resetModule() {
 
 }  // namespace
 
+#undef SHI_LOGINFO
+#define SHI_LOGINFO(message) logInfo(name, __func__, message)
+#undef SHI_LOGWARN
+#define SHI_LOGWARN(message) logWarn(name, __func__, message)
+#undef SHI_LOGERROR
+#define SHI_LOGERROR(message) logError(name, __func__, message)
+
 SHI::Hardware *SHI::hw = &instance;
 
 #ifndef VER_MAJ
@@ -128,7 +135,7 @@ void SHI::ESP32HW::resetWithReason(const char *reason, bool restart = true) {
   config.resetReason[sizeof(config.resetReason) - 1] = 0;
   configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
   if (restart) {
-    logInfo(name, __func__, "Restarting:" + String(reason));
+    SHI_LOGINFO("Restarting:" + String(reason));
     delay(100);
     ESP.restart();
   }
@@ -140,12 +147,12 @@ void SHI::ESP32HW::resetConfig() {
 }
 
 void SHI::ESP32HW::printConfig() {
-  logInfo(name, __func__, "IP address:  " + String(config.local_IP, 16));
-  logInfo(name, __func__, "Subnet Mask: " + String(config.subnet, 16));
-  logInfo(name, __func__, "Gateway IP:  " + String(config.gateway, 16));
-  logInfo(name, __func__, "Canary:      " + String(config.canary, 16));
-  logInfo(name, __func__, "Name:        " + String(config.name));
-  logInfo(name, __func__, "Reset reason:" + String(config.resetReason));
+  SHI_LOGINFO("IP address:  " + String(config.local_IP, 16));
+  SHI_LOGINFO("Subnet Mask: " + String(config.subnet, 16));
+  SHI_LOGINFO("Gateway IP:  " + String(config.gateway, 16));
+  SHI_LOGINFO("Canary:      " + String(config.canary, 16));
+  SHI_LOGINFO("Name:        " + String(config.name));
+  SHI_LOGINFO("Reset reason:" + String(config.resetReason));
 }
 
 bool SHI::ESP32HW::updateNodeName() {
@@ -162,10 +169,10 @@ bool SHI::ESP32HW::updateNodeName() {
     newName.trim();
     if (newName.length() == 0) return false;
     newName.toCharArray(config.name, sizeof(config.name));
-    logInfo(name, __func__, "Recevied new Name:" + newName);
+    SHI_LOGINFO("Recevied new Name:" + newName);
     return true;
   } else {
-    logInfo(name, __func__, "Failed to update name for mac:" + mac);
+    SHI_LOGINFO("Failed to update name for mac:" + mac);
   }
   return false;
 }
@@ -173,34 +180,16 @@ bool SHI::ESP32HW::updateNodeName() {
 const char *SHI::ESP32HW::getNodeName() { return config.name; }
 
 void SHI::ESP32HW::wifiDisconnected(WiFiEventInfo_t info) {
-  logInfo(name, __func__,
-          "WiFi lost connection. Reason: " + info.disconnected.reason);
+  SHI_LOGINFO("WiFi lost connection. Reason: " + info.disconnected.reason);
   for (auto &&comm : communicators) {
     comm->networkDisconnected();
   }
 }
 
 void SHI::ESP32HW::wifiConnected() {
-  logInfo(name, __func__, "Wifi connected");
+  SHI_LOGINFO("Wifi connected");
   for (auto &&comm : communicators) {
     comm->networkConnected();
-  }
-}
-
-void SHI::ESP32HW::setupSensors() {
-  for (auto &&sensor : sensors) {
-    String sensorName = sensor->getName();
-    logInfo(name, __func__, "Setting up: " + sensorName);
-    if (!sensor->setupSensor()) {
-      logInfo(name, __func__,
-              "Something went wrong when setting up sensor:" + sensorName +
-                  " " + sensor->getStatusMessage());
-      while (1) {
-        errLeds();
-      }
-    }
-    feedWatchdog();
-    logInfo(name, __func__, "Setup done of: " + sensorName);
   }
 }
 
@@ -210,16 +199,15 @@ void SHI::ESP32HW::setupWifiFromConfig(const char *defaultName) {
   configPrefs.begin(CONFIG);
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
   if (config.canary == CONST_MARKER) {
-    logInfo(name, __func__, "Restoring config from memory");
+    SHI_LOGINFO("Restoring config from memory");
     printConfig();
     WiFi.setHostname(config.name);
     if (!WiFi.config(config.local_IP, config.gateway, config.subnet, primaryDNS,
                      secondaryDNS)) {
-      logInfo(name, __func__, "STA Failed to configure");
+      SHI_LOGINFO("STA Failed to configure");
     }
   } else {
-    logInfo(name, __func__,
-            "Canary mismatch, stored: " + String(config.canary, 16));
+    SHI_LOGINFO("Canary mismatch, stored: " + String(config.canary, 16));
     snprintf(config.name, sizeof(config.name), "%s", defaultName);
   }
 
@@ -248,7 +236,7 @@ void SHI::ESP32HW::initialWifiConnect() {
       ESP.restart();
     }
     delay(500);
-    logInfo(name, __func__, ".");
+    SHI_LOGINFO(".");
     connectCount++;
   }
   feedWatchdog();
@@ -257,7 +245,7 @@ void SHI::ESP32HW::initialWifiConnect() {
 
 void SHI::ESP32HW::storeWifiConfig() {
   if (config.canary != CONST_MARKER && updateNodeName()) {
-    logInfo(name, __func__, "Storing config");
+    SHI_LOGINFO("Storing config");
     config.local_IP = WiFi.localIP();
     config.gateway = WiFi.gatewayIP();
     config.subnet = WiFi.subnetMask();
@@ -266,7 +254,7 @@ void SHI::ESP32HW::storeWifiConfig() {
     resetWithReason("Fresh-reset", false);
     config.canary = CONST_MARKER;
     configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
-    logInfo(name, __func__, "ESP Mac Address: " + WiFi.macAddress());
+    SHI_LOGINFO("ESP Mac Address: " + WiFi.macAddress());
     printConfig();
   }
 }
@@ -278,7 +266,7 @@ void SHI::ESP32HW::setup(const char *defaultName) {
   debugSerial->begin(115200);
 
   setupWifiFromConfig(defaultName);
-  logInfo(name, __func__, "Connecting to " + String(ssid));
+  SHI_LOGINFO("Connecting to " + String(ssid));
 
   uint32_t intialWifiConnectStart = millis();
   initialWifiConnect();
@@ -321,16 +309,6 @@ bool SHI::ESP32HW::wifiIsConntected() {
   averageConnectDuration = ((averageConnectDuration * 9) + diff) / 10.;
   retryCount = 0;
   return true;
-}
-
-void SHI::ESP32HW::accept(SHI::Visitor &visitor) {
-  visitor.visit(this);
-  for (auto &&comm : communicators) {
-    comm->accept(visitor);
-  }
-  for (auto &&sensor : sensors) {
-    sensor->accept(visitor);
-  }
 }
 
 std::vector<std::pair<const char *, const char *>>

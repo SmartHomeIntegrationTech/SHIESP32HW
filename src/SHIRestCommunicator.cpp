@@ -41,10 +41,9 @@ void SHI::RestCommunicator::newReading(const SHI::MeasurementBundle &reading,
 void SHI::RestCommunicator::newStatus(const SHI::Sensor &sensor,
                                       const char *message, bool isFatal) {
   if (!isConnected) {
-    SHI::hw->logInfo(name, __func__,
-                     ("Not uploading: " + String(sensor.getName()) +
-                      " as currently not connected")
-                         .c_str());
+    SHI_LOGINFO(("Not uploading: " + String(sensor.getName()) +
+                 " as currently not connected")
+                    .c_str());
     return;
   }
   uploadInfo(String(SHI::hw->getNodeName()) + String(sensor.getName()),
@@ -57,8 +56,7 @@ void SHI::RestCommunicator::newHardwareStatus(const char *message) {
 
 void SHI::RestCommunicator::uploadInfo(String valueName, String item,
                                        String value) {
-  SHI::hw->logInfo(name, __func__,
-                   (valueName + " " + item + " " + value).c_str());
+  SHI_LOGINFO((valueName + " " + item + " " + value).c_str());
   bool tryHard = false;
   if (item == STATUS_ITEM && value != STATUS_OK) {
     tryHard = true;
@@ -85,19 +83,17 @@ void SHI::RestCommunicator::printError(HTTPClient *http, int httpCode) {
     if (httpCode < 200 || httpCode > 299) httpErrorCount++;
     httpCount++;
     // HTTP header has been send and Server response header has been handled
-    SHI::hw->logInfo(name, __func__,
-                     ("response:" + String(httpCode, 10)).c_str());
+    SHI_LOGINFO(("response:" + String(httpCode, 10)).c_str());
 
     if (httpCode == HTTP_CODE_OK) {
       /// String payload = http->getString();
       // if (!payload.isEmpty())
-      // SHI::hw->logInfo(name, __func__, "Response payload was:" + payload);
+      // SHI_LOGINFO( "Response payload was:" + payload);
     }
   } else {
     errorCount++;
     // ets_printf(http.errorToString(httpCode).c_str());
-    SHI::hw->logInfo(name, __func__,
-                     ("Failed " + String(httpCode, 10)).c_str());
+    SHI_LOGINFO(("Failed " + String(httpCode, 10)).c_str());
   }
 }
 

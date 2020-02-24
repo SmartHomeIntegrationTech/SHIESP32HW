@@ -4,35 +4,31 @@
  * license that can be found in the LICENSE file.
  */
 #pragma once
-#include <Arduino.h>
-#include <HTTPClient.h>
 
-#include <utility>
-#include <vector>
+#include <map>
+#include <string>
 
+#include "LeifHomieLib.h"
 #include "SHICommunicator.h"
+#include "SHIObject.h"
 #include "SHISensor.h"
 
 namespace SHI {
 
-class RestCommunicator : public SHI::Communicator {
+class MQTT : public SHI::Communicator {
  public:
-  RestCommunicator() : Communicator("OpenhabREST") {}
-  void setupCommunication() override {}
-  void loopCommunication() override {}
+  MQTT() : Communicator("MQTT") {}
+  void setupCommunication() override;
+  void loopCommunication() override;
   void newReading(const SHI::MeasurementBundle &reading,
                   const SHI::Sensor &sensor) override;
   void newStatus(const SHI::Sensor &sensor, const char *message,
                  bool isFatal) override;
   void newHardwareStatus(const char *message) override;
-  std::vector<std::pair<const char *, const char *>> getStatistics() override;
-
- protected:
-  int errorCount = 0, httpErrorCount = 0, httpCount = 0;
 
  private:
-  void uploadInfo(String valueName, String item, String value);
-  void printError(HTTPClient *http, int httpCode);
+  HomieDevice homie;
+  std::map<std::string, HomieProperty> nameToProps;
 };
 
 }  // namespace SHI

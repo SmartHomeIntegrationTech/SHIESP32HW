@@ -8,6 +8,7 @@
 #include <SHIBLEBeacon.h>
 #endif
 #include <SHIHardware.h>
+#include <SHIMQTT.h>
 #include <SHIMulticastHandler.h>
 #include <SHIOLEDDisplay.h>
 #include <SHIRestCommunicator.h>
@@ -36,9 +37,10 @@ class DummySensor : public SHI::Sensor {
     return true;
   }
   void accept(SHI::Visitor &visitor) override {
-    visitor.visit(this);
+    visitor.enterVisit(this);
     visitor.visit(&humidty);
     visitor.visit(&temperature);
+    visitor.leaveVisit(this);
   }
   SHI::MeasurementMetaData humidty =
       SHI::MeasurementMetaData("Humidity", "%", SHI::SensorDataType::FLOAT);
@@ -50,12 +52,13 @@ class DummySensor : public SHI::Sensor {
  private:
 };
 std::shared_ptr<DummySensor> dummy = std::make_shared<DummySensor>();
-std::shared_ptr<SHI::Channel> channel =
-    std::make_shared<SHI::Channel>(dummy, "OutsideChannel");
+std::shared_ptr<SHI::SensorGroup> channel =
+    std::make_shared<SHI::SensorGroup>("OutsideChannel");
 std::shared_ptr<SHI::RestCommunicator> comms =
     std::make_shared<SHI::RestCommunicator>();
 std::shared_ptr<SHI::MulticastHandler> multicastComms =
     std::make_shared<SHI::MulticastHandler>();
+std::shared_ptr<SHI::MQTT> mqtt = std::make_shared<SHI::MQTT>();
 std::shared_ptr<SHI::OLEDDisplay> oled = std::make_shared<SHI::OLEDDisplay>(
     std::pair<String, String>({"OutsideChannelDummyHumidity", "Feuchtigkeit"}),
     std::pair<String, String>(
@@ -63,33 +66,50 @@ std::shared_ptr<SHI::OLEDDisplay> oled = std::make_shared<SHI::OLEDDisplay>(
 
 class PrintHierachyVisitor : public SHI::Visitor {
  public:
-  void visit(SHI::Sensor *sensor) override {
-    result += " S:" + String(sensor->getName()) + "\n";
-  };
-  void visit(SHI::Channel *channel) override {
-    result += " CH:" + String(channel->getName()) + "\n";
-  };
-  void visit(SHI::Hardware *harwdware) override {
-    result += String(harwdware->getName()) + "\n";
-  };
-  void visit(SHI::Communicator *communicator) override {
-    result += " C:" + String(communicator->getName()) + "\n";
-  };
-  void visit(SHI::MeasurementMetaData *data) override {
-    result += String("  SD:") + data->name + " unit:" + data->unit +
-              " type:" + String(static_cast<int>(data->type)) + "\n";
+  void enterVisit(SHI::Sensor *sensor) override {
+    result +=
+        std::string(indent, ' ') + "S:" + std::string(sensor->getName()) + "\n";
+    indent++;
   }
-  String result = "";
+  void leaveVisit(SHI::Sensor *sensor) override { indent--; }
+  void enterVisit(SHI::SensorGroup *channel) override {
+    result += std::string(indent, ' ') +
+              "CH:" + std::string(channel->getName()) + "\n";
+    indent++;
+  }
+  void leaveVisit(SHI::SensorGroup *channel) override { indent--; }
+  void enterVisit(SHI::Hardware *harwdware) override {
+    result += std::string(indent, ' ') +
+              "HW:" + std::string(harwdware->getName()) + "\n";
+    indent++;
+  }
+  void leaveVisit(SHI::Hardware *harwdware) override { indent--; }
+  void visit(SHI::Communicator *communicator) override {
+    result += std::string(indent, ' ') +
+              "C:" + std::string(communicator->getName()) + "\n";
+  }
+  void visit(SHI::MeasurementMetaData *data) override {
+    result += std::string(indent, ' ') + "MD:" + data->name +
+              " unit:" + data->unit +
+              " type:" + DATA_TYPES[static_cast<int>(data->type)] + "\n";
+  }
+
+  int indent = 0;
+  std::string result = "";
+
+ private:
+  const std::string DATA_TYPES[3] = {"INT", "FLOAT", "STRING"};
 };
 
 void setup() {
-  // SHI::hw->addCommunicator(comms);
+  SHI::hw->addCommunicator(mqtt);
   SHI::hw->addCommunicator(multicastComms);
 #ifdef HAS_DISPLAY
   SHI::hw->addCommunicator(oled);
 #endif
   oled->setBrightness(5);
-  SHI::hw->addSensor(channel);
+  channel->addSensor(dummy);
+  SHI::hw->addSensorGroup(channel);
   SHI::hw->setup("Test");
   dummy->humidtyValue = 10.4;
   dummy->temperatureValue = 25;
