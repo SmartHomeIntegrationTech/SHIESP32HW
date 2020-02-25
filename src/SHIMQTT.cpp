@@ -8,10 +8,10 @@
 #include <Arduino.h>
 #include <time.h>
 
-#include "LeifHomieLib.h"
 #include "SHICommunicator.h"
 #include "SHIHardware.h"
 #include "SHIVisitor.h"
+#include "ext/LeifHomieLib.h"
 
 namespace {
 

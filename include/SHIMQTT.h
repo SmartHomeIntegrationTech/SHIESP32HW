@@ -8,10 +8,10 @@
 #include <map>
 #include <string>
 
-#include "LeifHomieLib.h"
 #include "SHICommunicator.h"
 #include "SHIObject.h"
 #include "SHISensor.h"
+#include "ext/LeifHomieLib.h"
 
 namespace SHI {
 
