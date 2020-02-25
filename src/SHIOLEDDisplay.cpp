@@ -42,7 +42,7 @@ void SHI::OLEDDisplay::newReading(const SHI::MeasurementBundle &reading,
                                   const SHI::Sensor &sensor) {
   const String baseName = sensor.getName();
   for (auto &&data : reading.data) {
-    auto sensorName = baseName + data.getMetaData()->name;
+    auto sensorName = baseName + data.getMetaData()->getName();
     auto value = displayItems.find(sensorName);
     if (value != displayItems.end()) {
       displayLineBuf[(value->second * 2) + 1] =

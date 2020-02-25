@@ -34,6 +34,8 @@ class ESP32HW : public SHI::Hardware {
   void feedWatchdog() override;
   void disableWatchdog() override;
 
+  int64_t getEpochInMs() override;
+
   const char *getResetReason() override;
   void resetWithReason(const char *reason, bool restart) override;
   void errLeds(void) override;

@@ -11,6 +11,7 @@
 #include <Preferences.h>
 #include <WiFi.h>
 #include <rom/rtc.h>
+#include <time.h>
 
 #include <cstring>
 #include <map>
@@ -57,6 +58,10 @@ const int wdtTimeout = 15000;  // time in ms to trigger the watchdog
 
 const int CONNECT_TIMEOUT = 500;
 const int DATA_TIMEOUT = 1000;
+
+const char *ntpServer = "192.168.188.1";
+const long gmtOffset_sec = 3600;
+const int daylightOffset_sec = 3600;
 
 void IRAM_ATTR resetModule() {
   ets_printf("Watchdog bit, reboot\n");
@@ -109,7 +114,7 @@ void SHI::ESP32HW::loop() {
   feedWatchdog();
   uint32_t start = millis();
   wifiIsConntected();
-
+  internalLoop();
   uint32_t diff = millis() - start;
   averageSensorLoopDuration = ((averageSensorLoopDuration * 9) + diff) / 10.;
   if (diff < 1000) delay(diff);
@@ -208,7 +213,9 @@ void SHI::ESP32HW::setupWifiFromConfig(const char *defaultName) {
     }
   } else {
     SHI_LOGINFO("Canary mismatch, stored: " + String(config.canary, 16));
-    snprintf(config.name, sizeof(config.name), "%s", defaultName);
+    auto res = snprintf(config.name, sizeof(config.name), "%s", defaultName);
+    SHI_LOGINFO(String("Config name is now:") + config.name + " " +
+                String(res, 10));
   }
 
   feedWatchdog();
@@ -276,20 +283,25 @@ void SHI::ESP32HW::setup(const char *defaultName) {
       ("STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
        RESET_SOURCE[rtc_get_reset_reason(1)] + " " + String(config.resetReason))
           .c_str();
-  uint32_t commSetupStart = millis();
-  for (auto &&comm : communicators) {
-    comm->setupCommunication();
-    comm->newHardwareStatus(hwStatus);
-  }
-  commSetupTime = millis() - commSetupStart;
+  feedWatchdog();
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
   feedWatchdog();
   uint32_t sensorSetupStart = millis();
   setupSensors();
   sensorSetupTime = millis() - sensorSetupStart;
+  uint32_t commSetupStart = millis();
+  setupCommunicators(hwStatus);
+  commSetupTime = millis() - commSetupStart;
 }
 
 void SHI::ESP32HW::log(const String &msg) { debugSerial->println(msg); }
 void SHI::ESP32HW::log(const char *msg) { debugSerial->println(msg); }
+
+int64_t SHI::ESP32HW::getEpochInMs() {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return (tv.tv_sec * 1000LL + (tv.tv_usec / 1000LL));
+}
 
 bool SHI::ESP32HW::wifiIsConntected() {
   uint32_t start = millis();

@@ -29,7 +29,7 @@ void SHI::RestCommunicator::newReading(const SHI::MeasurementBundle &reading,
   for (auto &&data : reading.data) {
     if (data.getDataState() == SHI::MeasurementDataState::VALID) {
       uploadInfo(SHI::hw->getNodeName(),
-                 (String(sensorName) + data.getMetaData()->name).c_str(),
+                 (String(sensorName) + data.getMetaData()->getName()).c_str(),
                  data.toTransmitString().c_str());
       SHI::hw->feedWatchdog();
     }

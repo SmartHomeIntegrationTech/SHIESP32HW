@@ -28,7 +28,7 @@ class MQTT : public SHI::Communicator {
 
  private:
   HomieDevice homie;
-  std::map<std::string, HomieProperty> nameToProps;
+  std::map<std::string, HomieProperty *> nameToProps;
 };
 
 }  // namespace SHI

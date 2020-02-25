@@ -21,31 +21,29 @@ class DummySensor : public SHI::Sensor {
   std::vector<SHI::MeasurementBundle> readSensor() override {
     static int count = 0;
     SHI::hw->logInfo(name, __func__, "Loop Dummy Sensor");
-    auto humMeasure = humidty.measuredFloat(humidtyValue);
+    auto humMeasure = humidty->measuredFloat(humidtyValue);
     SHI::Measurement tempMeasure =
-        count++ >= 10 ? temperature.measuredNoData()
-                      : temperature.measuredFloat(temperatureValue);
+        count++ >= 10 ? temperature->measuredNoData()
+                      : temperature->measuredFloat(temperatureValue);
     if (count > 11) count = 0;
     return {SHI::MeasurementBundle({humMeasure, tempMeasure}, this)};
   }
   bool setupSensor() override {
     SHI::hw->logInfo(name, __func__, "Setup Dummy Sensor");
+    addMetaData(humidty);
+    addMetaData(temperature);
     return true;
   }
   bool stopSensor() override {
     SHI::hw->logInfo(name, __func__, "Stop Dummy Sensor");
     return true;
   }
-  void accept(SHI::Visitor &visitor) override {
-    visitor.enterVisit(this);
-    visitor.visit(&humidty);
-    visitor.visit(&temperature);
-    visitor.leaveVisit(this);
-  }
-  SHI::MeasurementMetaData humidty =
-      SHI::MeasurementMetaData("Humidity", "%", SHI::SensorDataType::FLOAT);
-  SHI::MeasurementMetaData temperature =
-      SHI::MeasurementMetaData("Temperature", "°C", SHI::SensorDataType::FLOAT);
+  std::shared_ptr<SHI::MeasurementMetaData> humidty =
+      std::make_shared<SHI::MeasurementMetaData>("Humidity", "%",
+                                                 SHI::SensorDataType::FLOAT);
+  std::shared_ptr<SHI::MeasurementMetaData> temperature =
+      std::make_shared<SHI::MeasurementMetaData>("Temperature", "°C",
+                                                 SHI::SensorDataType::FLOAT);
   float humidtyValue = 0;
   float temperatureValue = 0;
 
@@ -67,29 +65,29 @@ std::shared_ptr<SHI::OLEDDisplay> oled = std::make_shared<SHI::OLEDDisplay>(
 class PrintHierachyVisitor : public SHI::Visitor {
  public:
   void enterVisit(SHI::Sensor *sensor) override {
-    result +=
-        std::string(indent, ' ') + "S:" + std::string(sensor->getName()) + "\n";
+    result += std::string(indent, ' ') +
+              "S:" + std::string(sensor->getQualifiedName()) + "\n";
     indent++;
   }
   void leaveVisit(SHI::Sensor *sensor) override { indent--; }
   void enterVisit(SHI::SensorGroup *channel) override {
     result += std::string(indent, ' ') +
-              "CH:" + std::string(channel->getName()) + "\n";
+              "CH:" + std::string(channel->getQualifiedName()) + "\n";
     indent++;
   }
   void leaveVisit(SHI::SensorGroup *channel) override { indent--; }
   void enterVisit(SHI::Hardware *harwdware) override {
     result += std::string(indent, ' ') +
-              "HW:" + std::string(harwdware->getName()) + "\n";
+              "HW:" + std::string(harwdware->getQualifiedName()) + "\n";
     indent++;
   }
   void leaveVisit(SHI::Hardware *harwdware) override { indent--; }
   void visit(SHI::Communicator *communicator) override {
     result += std::string(indent, ' ') +
-              "C:" + std::string(communicator->getName()) + "\n";
+              "C:" + std::string(communicator->getQualifiedName()) + "\n";
   }
   void visit(SHI::MeasurementMetaData *data) override {
-    result += std::string(indent, ' ') + "MD:" + data->name +
+    result += std::string(indent, ' ') + "MD:" + data->getQualifiedName() +
               " unit:" + data->unit +
               " type:" + DATA_TYPES[static_cast<int>(data->type)] + "\n";
   }
@@ -121,6 +119,8 @@ void setup() {
 #endif
 }
 void loop() {
+  SHI::hw->logInfo("WifiBaseTest", __func__,
+                   (String("Heap is ") + ESP.getFreeHeap()).c_str());
   SHI::hw->loop();
   dummy->humidtyValue += 1;
   dummy->temperatureValue += 2.3;
