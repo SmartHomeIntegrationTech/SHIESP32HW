@@ -7,6 +7,7 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -15,23 +16,23 @@
 
 namespace SHI {
 
-class RestCommunicator : public SHI::Communicator {
+class RestCommunicator : public Communicator {
  public:
-  RestCommunicator() : Communicator("OpenhabREST") {}
+  explicit RestCommunicator(String prefix = "s_ESP32_")
+      : Communicator("OpenhabREST"), prefix(prefix) {}
   void setupCommunication() override {}
   void loopCommunication() override {}
-  void newReading(const SHI::MeasurementBundle &reading,
-                  const SHI::Sensor &sensor) override;
-  void newStatus(const SHI::Sensor &sensor, const char *message,
+  void newReading(const MeasurementBundle &reading) override;
+  void newStatus(const SHIObject &sensor, const char *message,
                  bool isFatal) override;
   void newHardwareStatus(const char *message) override;
-  std::vector<std::pair<const char *, const char *>> getStatistics() override;
-
- protected:
-  int errorCount = 0, httpErrorCount = 0, httpCount = 0;
+  std::vector<std::pair<std::string, std::string>> getStatistics() override;
 
  private:
-  void uploadInfo(String valueName, String item, String value);
+  int errorCount = 0, httpErrorCount = 0, httpCount = 0;
+  String prefix;
+  void uploadInfo(const std::string &item, const std::string &value,
+                  bool tryHard = false);
   void printError(HTTPClient *http, int httpCode);
 };
 

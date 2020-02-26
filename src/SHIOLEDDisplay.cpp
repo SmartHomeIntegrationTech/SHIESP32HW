@@ -38,9 +38,8 @@ void SHI::OLEDDisplay::loopCommunication() {
   }
 }
 
-void SHI::OLEDDisplay::newReading(const SHI::MeasurementBundle &reading,
-                                  const SHI::Sensor &sensor) {
-  const String baseName = sensor.getName();
+void SHI::OLEDDisplay::newReading(const SHI::MeasurementBundle &reading) {
+  const String baseName = reading.src->getName();
   for (auto &&data : reading.data) {
     auto sensorName = baseName + data.getMetaData()->getName();
     auto value = displayItems.find(sensorName);
@@ -52,8 +51,8 @@ void SHI::OLEDDisplay::newReading(const SHI::MeasurementBundle &reading,
   }
 }
 
-void SHI::OLEDDisplay::newStatus(const SHI::Sensor &sensor, const char *message,
-                                 bool isFatal) {
+void SHI::OLEDDisplay::newStatus(const SHI::SHIObject &sensor,
+                                 const char *message, bool isFatal) {
   auto msg = String(message);
   if (msg != STATUS_OK) {
     displayLineBuf[6] = msg;

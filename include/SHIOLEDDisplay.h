@@ -24,7 +24,7 @@ struct hash<String> {
 
 namespace SHI {
 
-class OLEDDisplay : public SHI::Communicator {
+class OLEDDisplay : public Communicator {
  public:
   OLEDDisplay(std::pair<String, String> firstRow = {"", ""},
               std::pair<String, String> secondRow = {"", ""},
@@ -39,9 +39,8 @@ class OLEDDisplay : public SHI::Communicator {
   }
   void setupCommunication() override;
   void loopCommunication() override;
-  void newReading(const SHI::MeasurementBundle &reading,
-                  const SHI::Sensor &sensor) override;
-  void newStatus(const SHI::Sensor &sensor, const char *message,
+  void newReading(const MeasurementBundle &reading) override;
+  void newStatus(const SHIObject &obj, const char *message,
                  bool isFatal) override;
   void newHardwareStatus(const char *message) override;
   void setBrightness(uint8_t level);

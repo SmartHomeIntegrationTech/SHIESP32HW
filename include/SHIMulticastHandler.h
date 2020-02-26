@@ -12,7 +12,7 @@
 
 namespace SHI {
 
-class MulticastHandler : public SHI::Communicator {
+class MulticastHandler : public Communicator {
  public:
   MulticastHandler() : Communicator("Multicast") {
     registeredHandlers.insert(
@@ -29,9 +29,8 @@ class MulticastHandler : public SHI::Communicator {
   }
   void setupCommunication() override;
   void loopCommunication() override;
-  void newReading(const SHI::MeasurementBundle &reading,
-                  const SHI::Sensor &sensor) override {}
-  void newStatus(const SHI::Sensor &sensor, const char *message,
+  void newReading(const MeasurementBundle &reading) override {}
+  void newStatus(const SHIObject &sensor, const char *message,
                  bool isFatal) override {}
   void newHardwareStatus(const char *message) override {}
   void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);

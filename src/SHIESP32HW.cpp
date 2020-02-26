@@ -92,10 +92,10 @@ SHI::Hardware *SHI::hw = &instance;
 const uint8_t SHI::MAJOR_VERSION = VER_MAJ;
 const uint8_t SHI::MINOR_VERSION = VER_MIN;
 const uint8_t SHI::PATCH_VERSION = VER_PAT;
-const char *SHI::VERSION =
-    (String(SHI::MAJOR_VERSION, 10) + "." + String(SHI::MINOR_VERSION, 10) +
-     "." + String(SHI::PATCH_VERSION, 10))
-        .c_str();
+const String internalVersion = String(SHI::MAJOR_VERSION, 10) + "." +
+                               String(SHI::MINOR_VERSION, 10) + "." +
+                               String(SHI::PATCH_VERSION, 10);
+const char *SHI::VERSION = internalVersion.c_str();
 
 void SHI::ESP32HW::errLeds(void) {
   // Set pin mode
@@ -183,6 +183,7 @@ bool SHI::ESP32HW::updateNodeName() {
 }
 
 const char *SHI::ESP32HW::getNodeName() { return config.name; }
+const char *SHI::ESP32HW::getName() const { return config.name; }
 
 void SHI::ESP32HW::wifiDisconnected(WiFiEventInfo_t info) {
   SHI_LOGINFO("WiFi lost connection. Reason: " + info.disconnected.reason);
@@ -323,8 +324,7 @@ bool SHI::ESP32HW::wifiIsConntected() {
   return true;
 }
 
-std::vector<std::pair<const char *, const char *>>
-SHI::ESP32HW::getStatistics() {
+std::vector<std::pair<std::string, std::string>> SHI::ESP32HW::getStatistics() {
   return {
       {"connectCount", String(connectCount).c_str()},
       {"retryCount", String(retryCount).c_str()},

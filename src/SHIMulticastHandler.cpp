@@ -29,23 +29,23 @@ class StatsVisitor : public SHI::Visitor {
  public:
   void visit(SHI::Sensor *sensor) {
     for (auto &&stat : sensor->getStatistics()) {
-      statString += String(sensor->getName()) + "." + stat.first + ":" +
+      statString += std::string(sensor->getName()) + "." + stat.first + ":" +
                     stat.second + "\n";
     }
   }
   void visit(SHI::Hardware *hardware) {
     for (auto &&stat : hardware->getStatistics()) {
-      statString += String(hardware->getName()) + "." + stat.first + ":" +
+      statString += std::string(hardware->getName()) + "." + stat.first + ":" +
                     stat.second + "\n";
     }
   }
   void visit(SHI::Communicator *communicator) {
     for (auto &&stat : communicator->getStatistics()) {
-      statString += String(communicator->getName()) + "." + stat.first + ":" +
-                    stat.second + "\n";
+      statString += std::string(communicator->getName()) + "." + stat.first +
+                    ":" + stat.second + "\n";
     }
   }
-  String statString = "";
+  std::string statString = "";
 };
 }  // namespace
 

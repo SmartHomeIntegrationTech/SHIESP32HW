@@ -26,7 +26,8 @@ class DummySensor : public SHI::Sensor {
         count++ >= 10 ? temperature->measuredNoData()
                       : temperature->measuredFloat(temperatureValue);
     if (count > 11) count = 0;
-    return {SHI::MeasurementBundle({humMeasure, tempMeasure}, this)};
+    return {
+        SHI::MeasurementBundle({humMeasure, tempMeasure, getStatus()}, this)};
   }
   bool setupSensor() override {
     SHI::hw->logInfo(name, __func__, "Setup Dummy Sensor");

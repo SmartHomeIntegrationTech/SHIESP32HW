@@ -53,6 +53,7 @@ class HomieHierachyVisitor : public SHI::Visitor {
       case SHI::SensorDataType::INT:
         prop->datatype = homieInt;
         break;
+      case SHI::SensorDataType::STATUS:
       case SHI::SensorDataType::STRING:
         prop->datatype = homieString;
         break;
@@ -91,10 +92,9 @@ void SHI::MQTT::loopCommunication() {
               (homie.IsConnected() ? "Connected" : "Disconnected"));
   homie.Loop();
 }
-void SHI::MQTT::newReading(const SHI::MeasurementBundle &reading,
-                           const SHI::Sensor &sensor) {
-  auto influxFormat = String(sensor.getName()) +
-                      ",qfn=" + sensor.getQualifiedName().c_str() + " ";
+void SHI::MQTT::newReading(const SHI::MeasurementBundle &reading) {
+  auto influxFormat = String(reading.src->getName()) +
+                      ",qfn=" + reading.src->getQualifiedName().c_str() + " ";
   bool first = true;
   for (auto &&data : reading.data) {
     if (data.getDataState() != SHI::MeasurementDataState::VALID) continue;
@@ -116,13 +116,13 @@ void SHI::MQTT::newReading(const SHI::MeasurementBundle &reading,
   char buf[10 + 3 + 6 + 2];  // 6 digits for ns plus 0 and whitespace
   snprintf(buf, sizeof(buf), " %d%03d000000", sPart, msPart);
   influxFormat += buf;
-  String topic =
-      String("sensors/") + sensor.getQualifiedName().c_str() + "/influxformat";
+  String topic = String("sensors/") + reading.src->getQualifiedName().c_str() +
+                 "/influxformat";
   String payload = influxFormat;
   // SHI_LOGINFO(std::string("Influx representation: ") + topic.c_str() + " " +
   //            payload.c_str());
   homie.PublishDirect(topic, 1, false, payload);
 }
-void SHI::MQTT::newStatus(const SHI::Sensor &sensor, const char *message,
+void SHI::MQTT::newStatus(const SHI::SHIObject &sensor, const char *message,
                           bool isFatal) {}
 void SHI::MQTT::newHardwareStatus(const char *message) {}

@@ -10,6 +10,7 @@
 #include <WiFi.h>
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -25,10 +26,11 @@ class SHIPrinter : public Print {
   virtual size_t write(uint8_t data) = 0;
 };
 
-class ESP32HW : public SHI::Hardware {
+class ESP32HW : public Hardware {
  public:
   ESP32HW() : Hardware("ESP32") {}
   const char *getNodeName() override;
+  const char *getName() const override;
 
   void setupWatchdog() override;
   void feedWatchdog() override;
@@ -46,7 +48,7 @@ class ESP32HW : public SHI::Hardware {
   void printConfig() override;
   void resetConfig() override;
 
-  std::vector<std::pair<const char *, const char *>> getStatistics() override;
+  std::vector<std::pair<std::string, std::string>> getStatistics() override;
 
   void logInfo(const char *name, const char *func, const String &message) {
     log("INFO: " + String(name) + "." + String(func) + "() " + message);
