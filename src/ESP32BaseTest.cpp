@@ -97,7 +97,7 @@ class PrintHierachyVisitor : public SHI::Visitor {
   std::string result = "";
 
  private:
-  const std::string DATA_TYPES[3] = {"INT", "FLOAT", "STRING"};
+  const std::string DATA_TYPES[4] = {"INT", "FLOAT", "STRING", "STATUS"};
 };
 
 void setup() {

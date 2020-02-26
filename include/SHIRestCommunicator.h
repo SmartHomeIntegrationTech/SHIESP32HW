@@ -23,13 +23,12 @@ class RestCommunicator : public Communicator {
   void setupCommunication() override {}
   void loopCommunication() override {}
   void newReading(const MeasurementBundle &reading) override;
-  void newStatus(const SHIObject &sensor, const char *message,
-                 bool isFatal) override;
-  void newHardwareStatus(const char *message) override;
+  void newStatus(const Measurement &status, SHIObject *src) override;
   std::vector<std::pair<std::string, std::string>> getStatistics() override;
 
  private:
-  int errorCount = 0, httpErrorCount = 0, httpCount = 0;
+  int errorCount = 0, httpErrorCount = 0, httpCount = 0,
+      missedConnectionCount = 0;
   String prefix;
   void uploadInfo(const std::string &item, const std::string &value,
                   bool tryHard = false);

@@ -18,14 +18,13 @@ namespace {
 const int CONNECT_TIMEOUT = 500;
 const int DATA_TIMEOUT = 1000;
 const String OHREST = "OpenhabRest";
-static bool endsWith(const std::string &str, const std::string &suffix) {
-  return str.size() >= suffix.size() &&
-         0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
-}
 }  // namespace
 
 void SHI::RestCommunicator::newReading(const SHI::MeasurementBundle &reading) {
-  if (!isConnected) return;
+  if (!isConnected) {
+    missedConnectionCount++;
+    return;
+  }
   SHI::hw->feedWatchdog();
   for (auto &&data : reading.data) {
     if (data.getDataState() == SHI::MeasurementDataState::VALID) {
@@ -36,27 +35,22 @@ void SHI::RestCommunicator::newReading(const SHI::MeasurementBundle &reading) {
   }
 }
 
-void SHI::RestCommunicator::newStatus(const SHI::SHIObject &sensor,
-                                      const char *message, bool isFatal) {
+void SHI::RestCommunicator::newStatus(const SHI::Measurement &status,
+                                      SHIObject *src) {
   if (!isConnected) {
-    SHI_LOGINFO(("Not uploading: " + String(sensor.getName()) +
+    SHI_LOGINFO(("Not uploading: " +
+                 String(status.getMetaData()->getQualifiedName().c_str()) +
                  " as currently not connected")
                     .c_str());
+    missedConnectionCount++;
     return;
   }
-  uploadInfo(
-      std::string(SHI::hw->getNodeName()) + sensor.getName() + STATUS_ITEM,
-      std::string(message), true);
-}
-
-void SHI::RestCommunicator::newHardwareStatus(const char *message) {
-  uploadInfo(std::string(SHI::hw->getNodeName()) + STATUS_ITEM,
-             std::string(message), true);
+  uploadInfo(status.getMetaData()->getQualifiedName("_"),
+             status.stringRepresentation, true);
 }
 
 void SHI::RestCommunicator::uploadInfo(const std::string &item,
-                                       const std::string &value,
-                                       bool tryHard = false) {
+                                       const std::string &value, bool tryHard) {
   SHI_LOGINFO((item + " " + value).c_str());
   int retryCount = 0;
   do {
@@ -86,6 +80,8 @@ void SHI::RestCommunicator::printError(HTTPClient *http, int httpCode) {
   } else {
     errorCount++;
     SHI_LOGINFO(("Failed " + String(httpCode, 10)).c_str());
+    statusMessage =
+        ("Last transmit failed with " + String(httpCode, 10)).c_str();
   }
 }
 
@@ -93,5 +89,6 @@ std::vector<std::pair<std::string, std::string>>
 SHI::RestCommunicator::getStatistics() {
   return {{"httpFatalErrorCount", String(errorCount).c_str()},
           {"httpErrorCount", String(httpErrorCount).c_str()},
+          {"missedConnectionCount", String(missedConnectionCount).c_str()},
           {"httpCount", String(httpCount).c_str()}};
 }

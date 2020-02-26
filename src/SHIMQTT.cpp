@@ -123,6 +123,4 @@ void SHI::MQTT::newReading(const SHI::MeasurementBundle &reading) {
   //            payload.c_str());
   homie.PublishDirect(topic, 1, false, payload);
 }
-void SHI::MQTT::newStatus(const SHI::SHIObject &sensor, const char *message,
-                          bool isFatal) {}
-void SHI::MQTT::newHardwareStatus(const char *message) {}
+void SHI::MQTT::newStatus(const SHI::Measurement &status, SHIObject *src) {}

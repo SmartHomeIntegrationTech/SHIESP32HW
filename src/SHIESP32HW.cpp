@@ -280,7 +280,7 @@ void SHI::ESP32HW::setup(const char *defaultName) {
   initialWifiConnect();
   storeWifiConfig();
   initialWifiConnectTime = millis() - intialWifiConnectStart;
-  auto hwStatus =
+  statusMessage =
       ("STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
        RESET_SOURCE[rtc_get_reset_reason(1)] + " " + String(config.resetReason))
           .c_str();
@@ -291,7 +291,7 @@ void SHI::ESP32HW::setup(const char *defaultName) {
   setupSensors();
   sensorSetupTime = millis() - sensorSetupStart;
   uint32_t commSetupStart = millis();
-  setupCommunicators(hwStatus);
+  setupCommunicators();
   commSetupTime = millis() - commSetupStart;
 }
 

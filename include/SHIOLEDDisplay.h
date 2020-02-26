@@ -40,9 +40,7 @@ class OLEDDisplay : public Communicator {
   void setupCommunication() override;
   void loopCommunication() override;
   void newReading(const MeasurementBundle &reading) override;
-  void newStatus(const SHIObject &obj, const char *message,
-                 bool isFatal) override;
-  void newHardwareStatus(const char *message) override;
+  void newStatus(const Measurement &status, SHIObject *src) override;
   void setBrightness(uint8_t level);
 
  private:

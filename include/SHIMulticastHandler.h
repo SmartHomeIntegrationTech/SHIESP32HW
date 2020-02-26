@@ -30,9 +30,7 @@ class MulticastHandler : public Communicator {
   void setupCommunication() override;
   void loopCommunication() override;
   void newReading(const MeasurementBundle &reading) override {}
-  void newStatus(const SHIObject &sensor, const char *message,
-                 bool isFatal) override {}
-  void newHardwareStatus(const char *message) override {}
+  void newStatus(const Measurement &status, SHIObject *src) override {}
   void addUDPPacketHandler(String trigger, AuPacketHandlerFunction handler);
 
  private:

@@ -51,18 +51,12 @@ void SHI::OLEDDisplay::newReading(const SHI::MeasurementBundle &reading) {
   }
 }
 
-void SHI::OLEDDisplay::newStatus(const SHI::SHIObject &sensor,
-                                 const char *message, bool isFatal) {
-  auto msg = String(message);
+void SHI::OLEDDisplay::newStatus(const Measurement &status, SHIObject *src) {
+  auto msg = String(status.stringRepresentation.c_str());
   if (msg != STATUS_OK) {
     displayLineBuf[6] = msg;
     displayUpdated = true;
   }
-}
-
-void SHI::OLEDDisplay::newHardwareStatus(const char *message) {
-  displayLineBuf[6] = "HW:" + String(message);
-  displayUpdated = true;
 }
 
 void SHI::OLEDDisplay::setBrightness(uint8_t level) {
