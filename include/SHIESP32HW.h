@@ -90,6 +90,7 @@ class ESP32HW : public Hardware {
   int connectCount = 0, retryCount = 0;
   uint32_t sensorSetupTime = 0, initialWifiConnectTime = 0, commSetupTime = 0;
   float averageSensorLoopDuration = 0, averageConnectDuration = 0;
+  String internalStatus = SHI::STATUS_OK;
 };
 
 }  // namespace SHI

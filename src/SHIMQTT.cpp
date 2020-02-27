@@ -108,24 +108,29 @@ void SHI::MQTT::loopCommunication() {
               (homie.IsConnected() ? "Connected" : "Disconnected"));
   homie.Loop();
 }
+
+String SHI::MQTT::updateData(const SHI::Measurement &data) {
+  if (data.getDataState() != SHI::MeasurementDataState::VALID) return "";
+  auto qfn = data.getMetaData()->getQualifiedName();
+  auto prop = nameToProps.find(qfn);
+  auto value = String(data.toTransmitString().c_str());
+  auto simpleName = String(data.getMetaData()->getName());
+  if (prop != nameToProps.end()) {
+    prop->second->SetValue(value);
+  } else {
+    SHI_LOGERROR("Did not find:" + qfn);
+  }
+  return simpleName + '=' + value;
+}
 void SHI::MQTT::newReading(const SHI::MeasurementBundle &reading) {
   auto influxFormat = String(reading.src->getName()) +
                       ",qfn=" + reading.src->getQualifiedName().c_str() + " ";
   bool first = true;
   for (auto &&data : reading.data) {
     if (data.getDataState() != SHI::MeasurementDataState::VALID) continue;
-    auto qfn = data.getMetaData()->getQualifiedName();
-    auto prop = nameToProps.find(qfn);
-    auto value = String(data.toTransmitString().c_str());
     if (!first) influxFormat += ',';
     first = false;
-    auto simpleName = String(data.getMetaData()->getName());
-    influxFormat += simpleName + '=' + value;
-    if (prop != nameToProps.end()) {
-      prop->second->SetValue(value);
-    } else {
-      SHI_LOGERROR("Did not find:" + qfn);
-    }
+    influxFormat += updateData(data);
   }
   int msPart = reading.timeStamp % 1000;  // 10 digits
   int sPart = reading.timeStamp / 1000;   // 3 digits
@@ -139,4 +144,6 @@ void SHI::MQTT::newReading(const SHI::MeasurementBundle &reading) {
   //            payload.c_str());
   homie.PublishDirect(topic, 1, false, payload);
 }
-void SHI::MQTT::newStatus(const SHI::Measurement &status, SHIObject *src) {}
+void SHI::MQTT::newStatus(const SHI::Measurement &status, SHIObject *src) {
+  updateData(status);
+}

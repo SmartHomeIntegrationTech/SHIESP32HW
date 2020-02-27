@@ -111,6 +111,8 @@ void SHI::ESP32HW::errLeds(void) {
 }
 
 void SHI::ESP32HW::loop() {
+  internalStatus = SHI::STATUS_OK;
+  statusMessage = internalStatus.c_str();
   feedWatchdog();
   uint32_t start = millis();
   wifiIsConntected();
@@ -280,10 +282,10 @@ void SHI::ESP32HW::setup(const char *defaultName) {
   initialWifiConnect();
   storeWifiConfig();
   initialWifiConnectTime = millis() - intialWifiConnectStart;
-  statusMessage =
-      ("STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
-       RESET_SOURCE[rtc_get_reset_reason(1)] + " " + String(config.resetReason))
-          .c_str();
+  internalStatus = "STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
+                   RESET_SOURCE[rtc_get_reset_reason(1)] + " " +
+                   String(config.resetReason);
+  statusMessage = internalStatus.c_str();
   feedWatchdog();
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
   feedWatchdog();

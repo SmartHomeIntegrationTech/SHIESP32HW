@@ -39,7 +39,9 @@ class MulticastHandler : public Communicator {
   void reconfHandler(AsyncUDPPacket *spacket);
   void infoHandler(AsyncUDPPacket *packet);
   void versionHandler(AsyncUDPPacket *packet);
-  void handleUDPPacket(AsyncUDPPacket &packet);
+  void handleUDPPacket(
+      AsyncUDPPacket &packet);  // NOLINT as defined from callback handler
+  void sendMulticast(const String &message);
   void updateProgress(size_t a, size_t b);
   bool isUpdateAvailable();
   void startUpdate();

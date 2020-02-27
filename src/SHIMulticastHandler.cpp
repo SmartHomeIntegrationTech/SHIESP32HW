@@ -27,19 +27,19 @@ PROGMEM const String RESET_SOURCE[] = {
 
 class StatsVisitor : public SHI::Visitor {
  public:
-  void visit(SHI::Sensor *sensor) {
+  void enterVisit(SHI::Sensor *sensor) override {
     for (auto &&stat : sensor->getStatistics()) {
       statString += std::string(sensor->getName()) + "." + stat.first + ":" +
                     stat.second + "\n";
     }
   }
-  void visit(SHI::Hardware *hardware) {
+  void enterVisit(SHI::Hardware *hardware) override {
     for (auto &&stat : hardware->getStatistics()) {
       statString += std::string(hardware->getName()) + "." + stat.first + ":" +
                     stat.second + "\n";
     }
   }
-  void visit(SHI::Communicator *communicator) {
+  void visit(SHI::Communicator *communicator) override {
     for (auto &&stat : communicator->getStatistics()) {
       statString += std::string(communicator->getName()) + "." + stat.first +
                     ":" + stat.second + "\n";
@@ -61,7 +61,7 @@ bool SHI::MulticastHandler::isUpdateAvailable() {
   http.setConnectTimeout(CONNECT_TIMEOUT);
   http.setTimeout(DATA_TIMEOUT);
   int httpCode = http.GET();
-  if (httpCode == 200) {
+  if (httpCode >= 200 && httpCode < 300) {
     String remoteVersion = http.getString();
     SHI_LOGINFO(("Remote version is:" + remoteVersion).c_str());
     return String(SHI::VERSION).compareTo(remoteVersion) < 0;
@@ -76,37 +76,46 @@ void SHI::MulticastHandler::startUpdate() {
   http.setConnectTimeout(CONNECT_TIMEOUT);
   http.setTimeout(DATA_TIMEOUT);
   int httpCode = http.GET();
-  if (httpCode == 200) {
-    udpMulticast.printf("OK UPDATE:%s Starting\n", SHI::hw->getNodeName());
+  if (httpCode >= 200 && httpCode < 300) {
+    sendMulticast(String("OK UPDATE:") + SHI::hw->getNodeName() + " Starting");
     int size = http.getSize();
     if (size < 0) {
-      udpMulticast.printf("ERR UPDATE:%s Abort, no size\n",
-                          SHI::hw->getNodeName());
+      sendMulticast(String("ERR UPDATE:") + SHI::hw->getNodeName() +
+                    " Abort, no size");
       return;
     }
     if (!Update.begin(size)) {
-      udpMulticast.printf("ERR UPDATE:%s Abort, not enough space\n",
-                          SHI::hw->getNodeName());
+      sendMulticast(String("ERR UPDATE:") + SHI::hw->getNodeName() +
+                    " Abort, not enough space");
       return;
     }
     Update.onProgress([this](size_t a, size_t b) { updateProgress(a, b); });
     size_t written = Update.writeStream(http.getStream());
     if (written == size) {
-      udpMulticast.printf("OK UPDATE:%s Finishing\n", SHI::hw->getNodeName());
+      sendMulticast(String("OK UPDATE:") + SHI::hw->getNodeName() +
+                    " Finishing");
       if (!Update.end()) {
-        udpMulticast.printf("ERR UPDATE:%s Abort finish failed: %u\n",
-                            SHI::hw->getNodeName(), Update.getError());
+        sendMulticast(String("ERR UPDATE:") + SHI::hw->getNodeName() +
+                      " Abort finish failed: " + String(Update.getError()));
       } else {
-        udpMulticast.printf("OK UPDATE:%s Finished\n", SHI::hw->getNodeName());
+        sendMulticast(String("OK UPDATE:") + SHI::hw->getNodeName() +
+                      " Finished");
       }
     } else {
-      udpMulticast.printf("ERR UPDATE:%s Abort, written:%d size:%d\n",
-                          SHI::hw->getNodeName(), written, size);
+      sendMulticast(String("ERR UPDATE:") + SHI::hw->getNodeName() +
+                    "Abort, written:" + String(written) +
+                    " size:" + String(size));
     }
     SHI::hw->resetConfig();
     SHI::hw->resetWithReason("Firmware updated", true);
   }
   http.end();
+}
+
+void SHI::MulticastHandler::sendMulticast(const String &message) {
+  AsyncUDPMessage msg;
+  msg.print(message);
+  auto size = udpMulticast.send(msg);
 }
 
 void SHI::MulticastHandler::loopCommunication() {
@@ -115,8 +124,8 @@ void SHI::MulticastHandler::loopCommunication() {
       startUpdate();
     } else {
       SHI_LOGINFO("No newer version available");
-      udpMulticast.printf("OK UPDATE:%s No update available\n",
-                          SHI::hw->getNodeName());
+      sendMulticast(String("OK UPDATE:") + SHI::hw->getNodeName() +
+                    " No Update available");
     }
     doUpdate = false;
   }

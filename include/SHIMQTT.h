@@ -24,6 +24,7 @@ class MQTT : public Communicator {
   void newStatus(const Measurement &status, SHIObject *src) override;
 
  private:
+  String updateData(const SHI::Measurement &data);
   HomieDevice homie;
   std::map<std::string, HomieProperty *> nameToProps;
 };
