@@ -29,12 +29,28 @@ class HomieHierachyVisitor : public SHI::Visitor {
     nodeName.toLowerCase();
     pNode->strID = nodeName;
   }
-  void leaveVisit(SHI::Sensor *sensor) override {}
-  void enterVisit(SHI::SensorGroup *channel) override {}
-  void leaveVisit(SHI::SensorGroup *channel) override {}
-  void enterVisit(SHI::Hardware *hardware) override {}
-  void leaveVisit(SHI::Hardware *hardware) override {}
-  void visit(SHI::Communicator *communicator) override {}
+  void leaveVisit(SHI::Sensor *sensor) override { pNode = nullptr; }
+  void enterVisit(SHI::SensorGroup *channel) override { pNode = nullptr; }
+  void leaveVisit(SHI::SensorGroup *channel) override { pNode = nullptr; }
+  void enterVisit(SHI::Hardware *hardware) override {
+    SHI_LOGINFO("Visiting hardware");
+    pNode = homie->NewNode();
+    auto qfn = hardware->getQualifiedName("-");
+    auto nodeName = String(qfn.c_str());
+    pNode->strFriendlyName = nodeName;
+    nodeName.toLowerCase();
+    pNode->strID = nodeName;
+  }
+  void leaveVisit(SHI::Hardware *hardware) override { pNode = nullptr; }
+  void visit(SHI::Communicator *communicator) override {
+    SHI_LOGINFO("Visiting communicator");
+    pNode = homie->NewNode();
+    auto qfn = communicator->getQualifiedName("-");
+    auto nodeName = String(qfn.c_str());
+    pNode->strFriendlyName = nodeName;
+    nodeName.toLowerCase();
+    pNode->strID = nodeName;
+  }
   void visit(SHI::MeasurementMetaData *data) override {
     SHI_LOGINFO("Visiting metaData");
     auto prop = pNode->NewProperty();
