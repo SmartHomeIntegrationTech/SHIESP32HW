@@ -55,13 +55,13 @@ class HomieHierachyVisitor : public SHI::Visitor {
     SHI_LOGINFO("Visiting metaData");
     auto prop = pNode->NewProperty();
     auto qfn = data->getQualifiedName();
-    auto nameString = String(data->getName());
+    auto nameString = String(data->getName().c_str());
     prop->strFriendlyName = nameString;
     nameToProp->insert({qfn, prop});
     SHI_LOGINFO("Registered:" + qfn);
     nameString.toLowerCase();
     prop->strID = nameString;
-    prop->strUnit = String(data->unit);
+    prop->strUnit = String(data->unit.c_str());
     switch (data->type) {
       case SHI::SensorDataType::FLOAT:
         prop->datatype = homieFloat;
@@ -88,8 +88,8 @@ class HomieHierachyVisitor : public SHI::Visitor {
 
 void SHI::MQTT::setupCommunication() {
   SHI_LOGINFO("Setting up");
-  String nodeName = String(SHI::hw->getNodeName());
-  homie.strFriendlyName = nodeName + " " + String(hw->getName());
+  String nodeName = String(SHI::hw->getNodeName().c_str());
+  homie.strFriendlyName = nodeName + " " + String(hw->getName().c_str());
   nodeName.toLowerCase();
   homie.strID = nodeName;
 
@@ -114,7 +114,7 @@ String SHI::MQTT::updateData(const SHI::Measurement &data) {
   auto qfn = data.getMetaData()->getQualifiedName();
   auto prop = nameToProps.find(qfn);
   auto value = String(data.toTransmitString().c_str());
-  auto simpleName = String(data.getMetaData()->getName());
+  auto simpleName = String(data.getMetaData()->getName().c_str());
   if (prop != nameToProps.end()) {
     prop->second->SetValue(value);
   } else {
@@ -123,7 +123,7 @@ String SHI::MQTT::updateData(const SHI::Measurement &data) {
   return simpleName + '=' + value;
 }
 void SHI::MQTT::newReading(const SHI::MeasurementBundle &reading) {
-  auto influxFormat = String(reading.src->getName()) +
+  auto influxFormat = String(reading.src->getName().c_str()) +
                       ",qfn=" + reading.src->getQualifiedName().c_str() + " ";
   bool first = true;
   for (auto &&data : reading.data) {

@@ -29,8 +29,8 @@ class SHIPrinter : public Print {
 class ESP32HW : public Hardware {
  public:
   ESP32HW() : Hardware("ESP32") {}
-  const char *getNodeName() override;
-  const char *getName() const override;
+  std::string getNodeName() override;
+  const std::string getName() const override;
 
   void setupWatchdog() override;
   void feedWatchdog() override;
@@ -38,11 +38,11 @@ class ESP32HW : public Hardware {
 
   int64_t getEpochInMs() override;
 
-  const char *getResetReason() override;
-  void resetWithReason(const char *reason, bool restart) override;
+  std::string getResetReason() override;
+  void resetWithReason(const std::string &reason, bool restart) override;
   void errLeds(void) override;
 
-  void setup(const char *altName) override;
+  void setup(const std::string &altName) override;
   void loop() override;
 
   void printConfig() override;
@@ -50,19 +50,22 @@ class ESP32HW : public Hardware {
 
   std::vector<std::pair<std::string, std::string>> getStatistics() override;
 
-  void logInfo(const char *name, const char *func, const String &message) {
-    log("INFO: " + String(name) + "." + String(func) + "() " + message);
+  void logInfo(const std::string &name, const char *func,
+               const String &message) {
+    log("INFO: " + String(name.c_str()) + "." + String(func) + "() " + message);
   }
-  void logWarn(const char *name, const char *func, const String &message) {
-    log("INFO: " + String(name) + "." + String(func) + "() " + message);
+  void logWarn(const std::string &name, const char *func,
+               const String &message) {
+    log("INFO: " + String(name.c_str()) + "." + String(func) + "() " + message);
   }
-  void logError(const char *name, const char *func, const String &message) {
-    log("INFO: " + String(name) + "." + String(func) + "() " + message);
+  void logError(const std::string &name, const char *func,
+                const String &message) {
+    log("INFO: " + String(name.c_str()) + "." + String(func) + "() " + message);
   }
 
  protected:
   void log(const String &message);
-  void log(const char *message);
+  void log(const std::string &message) override;
 
  private:
   struct config_t {
@@ -76,7 +79,7 @@ class ESP32HW : public Hardware {
   bool wifiIsConntected();
   void wifiDoSetup(String defaultName);
   bool updateNodeName();
-  void setupWifiFromConfig(const char *defaultName);
+  void setupWifiFromConfig(const std::string &defaultName);
   void initialWifiConnect();
   void storeWifiConfig();
 
@@ -90,7 +93,7 @@ class ESP32HW : public Hardware {
   int connectCount = 0, retryCount = 0;
   uint32_t sensorSetupTime = 0, initialWifiConnectTime = 0, commSetupTime = 0;
   float averageSensorLoopDuration = 0, averageConnectDuration = 0;
-  String internalStatus = SHI::STATUS_OK;
+  std::string internalStatus = SHI::STATUS_OK;
 };
 
 }  // namespace SHI

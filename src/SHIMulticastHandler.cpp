@@ -13,6 +13,8 @@
 
 #include "SHIHardware.h"
 
+#define C_NODENAME SHI::hw->getNodeName().c_str()
+
 namespace {
 
 const int CONNECT_TIMEOUT = 500;
@@ -50,14 +52,14 @@ class StatsVisitor : public SHI::Visitor {
 }  // namespace
 
 void SHI::MulticastHandler::updateProgress(size_t a, size_t b) {
-  udpMulticast.printf("OK UPDATE:%s %u/%u\n", SHI::hw->getNodeName(), a, b);
+  udpMulticast.printf("OK UPDATE:%s %u/%u\n", C_NODENAME, a, b);
   SHI::hw->feedWatchdog();
 }
 
 bool SHI::MulticastHandler::isUpdateAvailable() {
   HTTPClient http;
-  http.begin("http://192.168.188.250/esp/firmware/" +
-             String(SHI::hw->getNodeName()) + ".version");
+  http.begin("http://192.168.188.250/esp/firmware/" + String(C_NODENAME) +
+             ".version");
   http.setConnectTimeout(CONNECT_TIMEOUT);
   http.setTimeout(DATA_TIMEOUT);
   int httpCode = http.GET();
@@ -71,40 +73,36 @@ bool SHI::MulticastHandler::isUpdateAvailable() {
 
 void SHI::MulticastHandler::startUpdate() {
   HTTPClient http;
-  http.begin("http://192.168.188.250/esp/firmware/" +
-             String(SHI::hw->getNodeName()) + ".bin");
+  http.begin("http://192.168.188.250/esp/firmware/" + String(C_NODENAME) +
+             ".bin");
   http.setConnectTimeout(CONNECT_TIMEOUT);
   http.setTimeout(DATA_TIMEOUT);
   int httpCode = http.GET();
   if (httpCode >= 200 && httpCode < 300) {
-    sendMulticast(String("OK UPDATE:") + SHI::hw->getNodeName() + " Starting");
+    sendMulticast(String("OK UPDATE:") + C_NODENAME + " Starting");
     int size = http.getSize();
     if (size < 0) {
-      sendMulticast(String("ERR UPDATE:") + SHI::hw->getNodeName() +
-                    " Abort, no size");
+      sendMulticast(String("ERR UPDATE:") + C_NODENAME + " Abort, no size");
       return;
     }
     if (!Update.begin(size)) {
-      sendMulticast(String("ERR UPDATE:") + SHI::hw->getNodeName() +
+      sendMulticast(String("ERR UPDATE:") + C_NODENAME +
                     " Abort, not enough space");
       return;
     }
     Update.onProgress([this](size_t a, size_t b) { updateProgress(a, b); });
     size_t written = Update.writeStream(http.getStream());
     if (written == size) {
-      sendMulticast(String("OK UPDATE:") + SHI::hw->getNodeName() +
-                    " Finishing");
+      sendMulticast(String("OK UPDATE:") + C_NODENAME + " Finishing");
       if (!Update.end()) {
-        sendMulticast(String("ERR UPDATE:") + SHI::hw->getNodeName() +
+        sendMulticast(String("ERR UPDATE:") + C_NODENAME +
                       " Abort finish failed: " + String(Update.getError()));
       } else {
-        sendMulticast(String("OK UPDATE:") + SHI::hw->getNodeName() +
-                      " Finished");
+        sendMulticast(String("OK UPDATE:") + C_NODENAME + " Finished");
       }
     } else {
-      sendMulticast(String("ERR UPDATE:") + SHI::hw->getNodeName() +
-                    "Abort, written:" + String(written) +
-                    " size:" + String(size));
+      sendMulticast(String("ERR UPDATE:") + C_NODENAME + "Abort, written:" +
+                    String(written) + " size:" + String(size));
     }
     SHI::hw->resetConfig();
     SHI::hw->resetWithReason("Firmware updated", true);
@@ -115,7 +113,7 @@ void SHI::MulticastHandler::startUpdate() {
 void SHI::MulticastHandler::sendMulticast(const String &message) {
   AsyncUDPMessage msg;
   msg.print(message);
-  auto size = udpMulticast.send(msg);
+  udpMulticast.send(msg);
 }
 
 void SHI::MulticastHandler::loopCommunication() {
@@ -124,8 +122,7 @@ void SHI::MulticastHandler::loopCommunication() {
       startUpdate();
     } else {
       SHI_LOGINFO("No newer version available");
-      sendMulticast(String("OK UPDATE:") + SHI::hw->getNodeName() +
-                    " No Update available");
+      sendMulticast(String("OK UPDATE:") + C_NODENAME + " No Update available");
     }
     doUpdate = false;
   }
@@ -141,14 +138,14 @@ void SHI::MulticastHandler::setupCommunication() {
 
 void SHI::MulticastHandler::updateHandler(AsyncUDPPacket *packet) {
   SHI_LOGINFO("UPDATE called");
-  packet->printf("OK UPDATE:%s", SHI::hw->getNodeName());
+  packet->printf("OK UPDATE:%s", C_NODENAME);
   packet->flush();
   doUpdate = true;
 }
 
 void SHI::MulticastHandler::resetHandler(AsyncUDPPacket *packet) {
   SHI_LOGINFO("RESET called");
-  packet->printf("OK RESET:%s", SHI::hw->getNodeName());
+  packet->printf("OK RESET:%s", C_NODENAME);
   packet->flush();
   SHI::hw->resetWithReason("UDP RESET request", true);
 }
@@ -156,7 +153,7 @@ void SHI::MulticastHandler::resetHandler(AsyncUDPPacket *packet) {
 void SHI::MulticastHandler::reconfHandler(AsyncUDPPacket *packet) {
   SHI_LOGINFO("RECONF called");
   SHI::hw->resetConfig();
-  packet->printf("OK RECONF:%s", SHI::hw->getNodeName());
+  packet->printf("OK RECONF:%s", C_NODENAME);
   packet->flush();
   SHI::hw->resetWithReason("UDP RECONF request", true);
 }
@@ -175,7 +172,7 @@ void SHI::MulticastHandler::infoHandler(AsyncUDPPacket *packet) {
       "LocalIP:%s\n"
       "Mac:%s\n"
       "%s",
-      SHI::hw->getNodeName(), SHI::VERSION, SHI::hw->getResetReason(), millis(),
+      C_NODENAME, SHI::VERSION, SHI::hw->getResetReason().c_str(), millis(),
       RESET_SOURCE[rtc_get_reset_reason(0)].c_str(),
       RESET_SOURCE[rtc_get_reset_reason(1)].c_str(),
       WiFi.localIP().toString().c_str(), WiFi.macAddress().c_str(),
@@ -185,8 +182,7 @@ void SHI::MulticastHandler::infoHandler(AsyncUDPPacket *packet) {
 
 void SHI::MulticastHandler::versionHandler(AsyncUDPPacket *packet) {
   SHI_LOGINFO("VERSION called");
-  packet->printf("OK VERSION:%s\nVersion:%s", SHI::hw->getNodeName(),
-                 SHI::VERSION);
+  packet->printf("OK VERSION:%s\nVersion:%s", C_NODENAME, SHI::VERSION);
 }
 
 void SHI::MulticastHandler::addUDPPacketHandler(

@@ -41,7 +41,7 @@ class NullSHIPrinter : public SHI::SHIPrinter {
 NullSHIPrinter shiSerial;
 #endif
 
-PROGMEM const String RESET_SOURCE[] = {
+PROGMEM const std::string RESET_SOURCE[] = {
     "NO_MEAN",          "POWERON_RESET",    "SW_RESET",
     "OWDT_RESET",       "DEEPSLEEP_RESET",  "SDIO_RESET",
     "TG0WDT_SYS_RESET", "TG1WDT_SYS_RESET", "RTCWDT_SYS_RESET",
@@ -70,14 +70,14 @@ void IRAM_ATTR resetModule() {
 }
 
 }  // namespace
-
+/*
 #undef SHI_LOGINFO
 #define SHI_LOGINFO(message) logInfo(name, __func__, message)
 #undef SHI_LOGWARN
 #define SHI_LOGWARN(message) logWarn(name, __func__, message)
 #undef SHI_LOGERROR
 #define SHI_LOGERROR(message) logError(name, __func__, message)
-
+*/
 SHI::Hardware *SHI::hw = &instance;
 
 #ifndef VER_MAJ
@@ -111,8 +111,7 @@ void SHI::ESP32HW::errLeds(void) {
 }
 
 void SHI::ESP32HW::loop() {
-  internalStatus = SHI::STATUS_OK;
-  statusMessage = internalStatus.c_str();
+  statusMessage = SHI::STATUS_OK;
   feedWatchdog();
   uint32_t start = millis();
   wifiIsConntected();
@@ -135,14 +134,16 @@ void SHI::ESP32HW::feedWatchdog() {
 
 void SHI::ESP32HW::disableWatchdog() { timerEnd(timer); }
 
-const char *SHI::ESP32HW::getResetReason() { return config.resetReason; }
+std::string SHI::ESP32HW::getResetReason() { return config.resetReason; }
 
-void SHI::ESP32HW::resetWithReason(const char *reason, bool restart = true) {
-  std::memcpy(config.resetReason, reason, sizeof(config.resetReason) - 1);
+void SHI::ESP32HW::resetWithReason(const std::string &reason,
+                                   bool restart = true) {
+  std::memcpy(config.resetReason, reason.c_str(),
+              sizeof(config.resetReason) - 1);
   config.resetReason[sizeof(config.resetReason) - 1] = 0;
   configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
   if (restart) {
-    SHI_LOGINFO("Restarting:" + String(reason));
+    SHI_LOGINFO(std::string("Restarting:") + reason);
     delay(100);
     ESP.restart();
   }
@@ -154,12 +155,14 @@ void SHI::ESP32HW::resetConfig() {
 }
 
 void SHI::ESP32HW::printConfig() {
-  SHI_LOGINFO("IP address:  " + String(config.local_IP, 16));
-  SHI_LOGINFO("Subnet Mask: " + String(config.subnet, 16));
-  SHI_LOGINFO("Gateway IP:  " + String(config.gateway, 16));
-  SHI_LOGINFO("Canary:      " + String(config.canary, 16));
-  SHI_LOGINFO("Name:        " + String(config.name));
-  SHI_LOGINFO("Reset reason:" + String(config.resetReason));
+  SHI_LOGINFO("IP address:  " +
+              std::string(String(config.local_IP, 16).c_str()));
+  SHI_LOGINFO("Subnet Mask: " + std::string(String(config.subnet, 16).c_str()));
+  SHI_LOGINFO("Gateway IP:  " +
+              std::string(String(config.gateway, 16).c_str()));
+  SHI_LOGINFO("Canary:      " + std::string(String(config.canary, 16).c_str()));
+  SHI_LOGINFO("Name:        " + std::string(config.name));
+  SHI_LOGINFO("Reset reason:" + std::string(config.resetReason));
 }
 
 bool SHI::ESP32HW::updateNodeName() {
@@ -176,16 +179,16 @@ bool SHI::ESP32HW::updateNodeName() {
     newName.trim();
     if (newName.length() == 0) return false;
     newName.toCharArray(config.name, sizeof(config.name));
-    SHI_LOGINFO("Recevied new Name:" + newName);
+    SHI_LOGINFO("Recevied new Name:" + std::string(newName.c_str()));
     return true;
   } else {
-    SHI_LOGINFO("Failed to update name for mac:" + mac);
+    SHI_LOGINFO("Failed to update name for mac:" + std::string(mac.c_str()));
   }
   return false;
 }
 
-const char *SHI::ESP32HW::getNodeName() { return config.name; }
-const char *SHI::ESP32HW::getName() const { return config.name; }
+std::string SHI::ESP32HW::getNodeName() { return config.name; }
+const std::string SHI::ESP32HW::getName() const { return config.name; }
 
 void SHI::ESP32HW::wifiDisconnected(WiFiEventInfo_t info) {
   SHI_LOGINFO("WiFi lost connection. Reason: " + info.disconnected.reason);
@@ -201,7 +204,7 @@ void SHI::ESP32HW::wifiConnected() {
   }
 }
 
-void SHI::ESP32HW::setupWifiFromConfig(const char *defaultName) {
+void SHI::ESP32HW::setupWifiFromConfig(const std::string &defaultName) {
   IPAddress primaryDNS(192, 168, 188, 250);  // optional
   IPAddress secondaryDNS(192, 168, 188, 1);  // optional
   configPrefs.begin(CONFIG);
@@ -215,10 +218,12 @@ void SHI::ESP32HW::setupWifiFromConfig(const char *defaultName) {
       SHI_LOGINFO("STA Failed to configure");
     }
   } else {
-    SHI_LOGINFO("Canary mismatch, stored: " + String(config.canary, 16));
-    auto res = snprintf(config.name, sizeof(config.name), "%s", defaultName);
-    SHI_LOGINFO(String("Config name is now:") + config.name + " " +
-                String(res, 10));
+    SHI_LOGINFO("Canary mismatch, stored: " +
+                std::string(String(config.canary, 16).c_str()));
+    auto res =
+        snprintf(config.name, sizeof(config.name), "%s", defaultName.c_str());
+    SHI_LOGINFO(std::string("Config name is now:") + config.name + " " +
+                std::string(String(res, 10).c_str()));
   }
 
   feedWatchdog();
@@ -264,28 +269,27 @@ void SHI::ESP32HW::storeWifiConfig() {
     resetWithReason("Fresh-reset", false);
     config.canary = CONST_MARKER;
     configPrefs.putBytes(CONFIG, &config, sizeof(config_t));
-    SHI_LOGINFO("ESP Mac Address: " + WiFi.macAddress());
+    SHI_LOGINFO("ESP Mac Address: " + std::string(WiFi.macAddress().c_str()));
     printConfig();
   }
 }
 
-void SHI::ESP32HW::setup(const char *defaultName) {
+void SHI::ESP32HW::setup(const std::string &defaultName) {
   setupWatchdog();
   feedWatchdog();
   debugSerial = &shiSerial;
   debugSerial->begin(115200);
 
   setupWifiFromConfig(defaultName);
-  SHI_LOGINFO("Connecting to " + String(ssid));
+  SHI_LOGINFO("Connecting to " + std::string(ssid));
 
   uint32_t intialWifiConnectStart = millis();
   initialWifiConnect();
   storeWifiConfig();
   initialWifiConnectTime = millis() - intialWifiConnectStart;
-  internalStatus = "STARTED: " + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
-                   RESET_SOURCE[rtc_get_reset_reason(1)] + " " +
-                   String(config.resetReason);
-  statusMessage = internalStatus.c_str();
+  statusMessage =
+      std::string("STARTED: ") + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
+      RESET_SOURCE[rtc_get_reset_reason(1)] + " " + config.resetReason;
   feedWatchdog();
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
   feedWatchdog();
@@ -298,7 +302,9 @@ void SHI::ESP32HW::setup(const char *defaultName) {
 }
 
 void SHI::ESP32HW::log(const String &msg) { debugSerial->println(msg); }
-void SHI::ESP32HW::log(const char *msg) { debugSerial->println(msg); }
+void SHI::ESP32HW::log(const std::string &msg) {
+  debugSerial->println(msg.c_str());
+}
 
 int64_t SHI::ESP32HW::getEpochInMs() {
   struct timeval tv;

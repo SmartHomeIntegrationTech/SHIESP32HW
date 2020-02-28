@@ -10,7 +10,9 @@
 #include <SHIHardware.h>
 #include <SHIMQTT.h>
 #include <SHIMulticastHandler.h>
+#ifdef HAS_DISPLAY
 #include <SHIOLEDDisplay.h>
+#endif
 #include <SHIRestCommunicator.h>
 #include <SHIVisitor.h>
 
@@ -58,10 +60,12 @@ std::shared_ptr<SHI::RestCommunicator> comms =
 std::shared_ptr<SHI::MulticastHandler> multicastComms =
     std::make_shared<SHI::MulticastHandler>();
 std::shared_ptr<SHI::MQTT> mqtt = std::make_shared<SHI::MQTT>();
+#ifdef HAS_DISPLAY
 std::shared_ptr<SHI::OLEDDisplay> oled = std::make_shared<SHI::OLEDDisplay>(
     std::pair<String, String>({"OutsideChannelDummyHumidity", "Feuchtigkeit"}),
     std::pair<String, String>(
         {"OutsideChannelDummyTemperature", "Temperatur"}));
+#endif
 
 class PrintHierachyVisitor : public SHI::Visitor {
  public:
@@ -105,8 +109,8 @@ void setup() {
   SHI::hw->addCommunicator(multicastComms);
 #ifdef HAS_DISPLAY
   SHI::hw->addCommunicator(oled);
-#endif
   oled->setBrightness(5);
+#endif
   channel->addSensor(dummy);
   SHI::hw->addSensorGroup(channel);
   SHI::hw->setup("Test");
