@@ -180,8 +180,10 @@ void SHI::ESP32HW::wifiConnected() {
 }
 
 void SHI::ESP32HW::setupWifiFromConfig(const std::string &defaultName) {
-  IPAddress primaryDNS(hwConfig.primaryDNS);      // optional
-  IPAddress secondaryDNS(hwConfig.secondaryDNS);  // optional
+  IPAddress primaryDNS;
+  primaryDNS.fromString(hwConfig.primaryDNS.c_str());  // optional
+  IPAddress secondaryDNS;
+  secondaryDNS.fromString(hwConfig.secondaryDNS.c_str());  // optional
   configPrefs.begin(CONFIG);
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
   if (config.canary == CONST_MARKER) {

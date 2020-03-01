@@ -16,11 +16,54 @@
 #include <vector>
 
 #include "SHICommunicator.h"
-#include "SHIESP32HW_config.h"
+#include "SHIFactory.h"
 #include "SHIHardware.h"
 #include "SHISensor.h"
 
 namespace SHI {
+
+#include "ArduinoJson.h"
+
+#ifndef BUILTIN_LED
+#warning "Did not define BUILTIN_LED"
+#define BUILTIN_LED -1
+#endif
+
+class ESP32HWConfig : public Configuration {
+ public:
+  explicit ESP32HWConfig(const JsonObject &obj);
+  std::string toJson() override;
+  void printJson(std::ostream printer) override;
+  void fillData(
+      JsonDocument &doc) override;  // NOLINT Yes, non constant reference
+  const std::string ssid = "Elfenburg";
+  const std::string password = "fe-shnyed-olv-ek";
+
+  std::string local_IP = "";
+  std::string subnet = "255.255.255.0";
+  const std::string gateway = "192.168.188.1";  // 0xC0A8BC01;
+  const std::string primaryDNS = "192.168.188.1";
+  const std::string secondaryDNS = "192.168.188.1";
+  const std::string ntp = "192.168.188.1";
+  const std::string name = "Testing";
+  const std::string baseURL = "http://192.168.188.250/esp/";
+
+  const int reconnectDelay = 500;
+  const int reconnectAttempts = 10;
+
+  const int wdtTimeout = 15000;  // time in ms to trigger the watchdog
+  const int CONNECT_TIMEOUT = 500;
+  const int DATA_TIMEOUT = 1000;
+
+  const std::string ntpServer = "192.168.188.1";
+  const int gmtOffset_sec = 3600;
+  const int daylightOffset_sec = 3600;
+  const int ERR_LED = BUILTIN_LED;
+
+  const int baudRate = 115200;
+  const bool disableUART = false;
+  const int debugLevel = 0;
+};
 
 class SHIPrinter : public Print {
  public:
@@ -52,6 +95,8 @@ class ESP32HW : public Hardware {
   void resetConfig() override;
 
   std::vector<std::pair<std::string, std::string>> getStatistics() override;
+
+  Configuration *getConfig() override { return &hwConfig; }
 
   void logInfo(const std::string &name, const char *func,
                const String &message) {

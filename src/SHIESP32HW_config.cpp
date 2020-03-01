@@ -6,23 +6,24 @@
 
 // WARNING, this is an automatically generated file!
 // Don't change anything in here.
+// Last update 2020-03-01
 
-#include "SHIESP32HW_config.h"
+# include <iostream>
+# include <string>
 
-#include <iostream>
-#include <string>
-namespace {
-const size_t capacity = JSON_OBJECT_SIZE(22);
-}
-SHI::ESP32HWConfig::ESP32HWConfig(JsonObject obj)
-    : ssid(obj["ssid"] | "Elfenburg"),
+
+#include "SHIESP32HW.h"
+// Configuration implementation for class SHI::ESP32HWConfig
+
+SHI::ESP32HWConfig::ESP32HWConfig(const JsonObject &obj):
+       ssid(obj["ssid"] | "Elfenburg"),
       password(obj["password"] | "fe-shnyed-olv-ek"),
-      local_IP(obj["local_IP"]),
-      subnet(obj["subnet"] | 0x00FFFFFF),
-      gateway(obj["gateway"] | 0x01bca8c0),
-      primaryDNS(obj["primaryDNS"] | 0xfabca8c0),
-      secondaryDNS(obj["secondaryDNS"] | 0xfabca8c0),
-      ntp(obj["ntp"] | 0x01bca8c0),
+      local_IP(obj["local_IP"] | ""),
+      subnet(obj["subnet"] | "255.255.255.0"),
+      gateway(obj["gateway"] | "192.168.188.1"),
+      primaryDNS(obj["primaryDNS"] | "192.168.188.1"),
+      secondaryDNS(obj["secondaryDNS"] | "192.168.188.1"),
+      ntp(obj["ntp"] | "192.168.188.1"),
       name(obj["name"] | "Testing"),
       baseURL(obj["baseURL"] | "http://192.168.188.250/esp/"),
       reconnectDelay(obj["reconnectDelay"] | 500),
@@ -36,10 +37,11 @@ SHI::ESP32HWConfig::ESP32HWConfig(JsonObject obj)
       ERR_LED(obj["ERR_LED"] | BUILTIN_LED),
       baudRate(obj["baudRate"] | 115200),
       disableUART(obj["disableUART"] | false),
-      debugLevel(obj["debugLevel"] | 0) {}
+      debugLevel(obj["debugLevel"] | 0)
+  {}
 
 void SHI::ESP32HWConfig::fillData(JsonDocument &doc) {
-  doc["ssid"] = ssid;
+    doc["ssid"] = ssid;
   doc["password"] = password;
   doc["local_IP"] = local_IP;
   doc["subnet"] = subnet;
@@ -62,15 +64,20 @@ void SHI::ESP32HWConfig::fillData(JsonDocument &doc) {
   doc["disableUART"] = disableUART;
   doc["debugLevel"] = debugLevel;
 }
+
+namespace {
+  const size_t ESP32HWConfigCapacity = JSON_OBJECT_SIZE(22);
+}
+
 std::string SHI::ESP32HWConfig::toJson() {
-  DynamicJsonDocument doc(capacity);
+  DynamicJsonDocument doc(ESP32HWConfigCapacity);
   fillData(doc);
   char output[2000];
   serializeJson(doc, output, sizeof(output));
   return std::string(output);
 }
 void SHI::ESP32HWConfig::printJson(std::ostream printer) {
-  DynamicJsonDocument doc(capacity);
+  DynamicJsonDocument doc(ESP32HWConfigCapacity);
   fillData(doc);
   serializeJson(doc, printer);
 }
