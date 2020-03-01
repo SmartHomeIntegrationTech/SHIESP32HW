@@ -1,4 +1,6 @@
 import sys
+import datetime
+import os
 from CppHeaderParser import CppHeader, CppParseError, CppVariable
 
 fileStart = '''/*
@@ -9,52 +11,80 @@ fileStart = '''/*
 
 // WARNING, this is an automatically generated file!
 // Don't change anything in here.
+// Last update {date}
 
 # include <iostream>
-# include <string>'''
-fileMiddle = ''' {}
+# include <string>
+'''
+sensorSpecific = '''
+#include \"{header}\"
+// Configuration implementation for class {qfn}
 
-void SHI::ESP32HWConfig::fillData(JsonDocument &doc) {'''
-fileEnd = '''}
-std::string SHI::ESP32HWConfig::toJson() {
-  DynamicJsonDocument doc(capacity);
+{qfn}::{name}(const JsonObject &obj):
+ {initializer}
+  {{}}
+
+void {qfn}::fillData(JsonDocument &doc) {{
+  {filler}
+}}
+
+namespace {{
+  const size_t {name}Capacity = JSON_OBJECT_SIZE({len});
+}}
+
+std::string {qfn}::toJson() {{
+  DynamicJsonDocument doc({name}Capacity);
   fillData(doc);
   char output[2000];
   serializeJson(doc, output, sizeof(output));
   return std::string(output);
-}
-void SHI::ESP32HWConfig::printJson(std::ostream printer) {
-  DynamicJsonDocument doc(capacity);
+}}
+void {qfn}::printJson(std::ostream printer) {{
+  DynamicJsonDocument doc({name}Capacity);
   fillData(doc);
   serializeJson(doc, printer);
-}'''
+}}'''
 
 
 def generateCodeForProperty(p: CppVariable, initializer: list, toString: list):
+    map = {'name': p["name"], 'default': p["default"]}
     if "default" in p:
         print("   Code for %s=%s" % (p["name"], p["default"]))
-        initializer.append("      {}(obj[\"{}\"] | {})".format(
-            p["name"], p["name"], p["default"]))
+        initializer.append(
+            "      {name}(obj[\"{name}\"] | {default})".format_map(map))
     else:
         print("   Code for %s" % p["name"])
         initializer.append(
-            "      {}(obj[\"{}\"])".format(p["name"], p["name"]))
-    toString.append("  doc[\"{}\"] = {};".format(p["name"], p["name"]))
+            "      {name}(obj[\"{name}\"])".format_map(map))
+    toString.append("  doc[\"{name}\"] = {name};".format_map(map))
 
 
-def parseHeader(header: str):
+def parseHeader(headerFullPath: str):
+    header = os.path.basename(headerFullPath)
+    directory = os.path.dirname(headerFullPath)+"/"
     try:
-        cppHeader = CppHeader(
-            "/Users/karstenbecker/PlatformIO/Projects/SmartHomeIntegration/include/"+header)
+        cppHeader = CppHeader(directory+header)
     except CppParseError as e:
         print("Ignored {} because it failed to parse: {}".format(header, e))
         return
-
-    initializer = []
-    toString = []
-
+    sensorSpecifics = []
     for name, clazz in cppHeader.classes.items():
-        print("%s" % name)
+        initializer = []
+        toString = []
+        nameSpacePrefix = ""
+        if clazz["namespace"]:
+            nameSpacePrefix = clazz["namespace"]+"::"
+        map = {'name': name, 'qfn': nameSpacePrefix+name, 'header': header}
+        name = nameSpacePrefix+name
+        print(name)
+        foundConfigClass = False
+        for inherit in clazz["inherits"]:
+            if (nameSpacePrefix+inherit["class"] == "SHI::Configuration"):
+                foundConfigClass = True
+        if not foundConfigClass:
+            print(
+                "Ignoring {qfn} in file {header} as it is not a subclass of SHI::Configuration".format_map(map))
+            continue
         for access, prop in clazz["properties"].items():
             print(" %s" % access)
             if (access == "public"):
@@ -63,17 +93,30 @@ def parseHeader(header: str):
                     generateCodeForProperty(p, initializer, toString)
             else:
                 print("  Skipping non public members")
+        map['len'] = len(initializer)
+        map['initializer'] = ",\n".join(initializer)
+        map['filler'] = "\n".join(toString)
+        sensorSpecifics.append(sensorSpecific.format_map(map))
 
-    cpp = open("cpp.txt", 'w')
-    print(fileStart, file=cpp)
-    print("#include \"{}\"\nnamespace {{\nconst size_t capacity = JSON_OBJECT_SIZE({});\n}}".format(
-        header, len(initializer)), file=cpp)
-    print("SHI::ESP32HWConfig::ESP32HWConfig(JsonObject obj):", file=cpp)
-    print(",\n".join(initializer), file=cpp)
-    print(fileMiddle, file=cpp)
-    print("\n".join(toString), file=cpp)
-    print(fileEnd, file=cpp)
-    cpp.close()
+    if len(sensorSpecifics) > 0:
+        outputFile = directory.replace(
+            "/include/", "/src/")+header.replace(".h", "_config.cpp")
+        print("Writing output to {}".format(outputFile))
+        map['date'] = "{}".format(datetime.date.today())
+        cpp = open(outputFile, 'w')
+        print(fileStart.format_map(map), file=cpp)
+        print("\n".join(sensorSpecifics), file=cpp)
+        cpp.close()
 
 
-parseHeader("SHIESP32HW_config.h")
+parseHeader(
+    "/Users/karstenbecker/PlatformIO/Projects/SHIT/include/SHISensor.h")
+parseHeader(
+    "/Users/karstenbecker/PlatformIO/Projects/SmartHomeIntegration/include/SHIESP32HW.h")
+parseHeader(
+    "/Users/karstenbecker/PlatformIO/Projects/SHIMulticast/include/SHIMulticastHandler.h")
+parseHeader("/Users/karstenbecker/PlatformIO/Projects/SHIMQTT/include/SHIMQTT.h")
+parseHeader(
+    "/Users/karstenbecker/PlatformIO/Projects/SHIOpenhabRest/include/SHIOpenhabRestCommunicator.h")
+parseHeader(
+    "/Users/karstenbecker/PlatformIO/Projects/SHIBME680/include/SHIBME680.h")
