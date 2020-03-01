@@ -5,6 +5,7 @@
  */
 #pragma once
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <AsyncUDP.h>
 #include <Preferences.h>
 #include <WiFi.h>
@@ -15,6 +16,7 @@
 #include <vector>
 
 #include "SHICommunicator.h"
+#include "SHIESP32HW_config.h"
 #include "SHIHardware.h"
 #include "SHISensor.h"
 
@@ -28,7 +30,8 @@ class SHIPrinter : public Print {
 
 class ESP32HW : public Hardware {
  public:
-  ESP32HW() : Hardware("ESP32") {}
+  explicit ESP32HW(const ESP32HWConfig &config)
+      : Hardware("ESP32"), hwConfig(config) {}
   std::string getNodeName() override;
   const std::string getName() const override;
 
@@ -52,15 +55,18 @@ class ESP32HW : public Hardware {
 
   void logInfo(const std::string &name, const char *func,
                const String &message) {
-    log("INFO: " + String(name.c_str()) + "." + String(func) + "() " + message);
+    if (hwConfig.debugLevel <= 0)
+      log(String("INFO: ") + name.c_str() + "." + func + "() " + message);
   }
   void logWarn(const std::string &name, const char *func,
                const String &message) {
-    log("INFO: " + String(name.c_str()) + "." + String(func) + "() " + message);
+    if (hwConfig.debugLevel <= 1)
+      log(String("WARN: ") + name.c_str() + "." + func + "() " + message);
   }
   void logError(const std::string &name, const char *func,
                 const String &message) {
-    log("INFO: " + String(name.c_str()) + "." + String(func) + "() " + message);
+    if (hwConfig.debugLevel <= 2)
+      log(String("ERROR: ") + name.c_str() + "." + func + "() " + message);
   }
 
  protected:
@@ -76,6 +82,7 @@ class ESP32HW : public Hardware {
     char name[20];
     char resetReason[40];
   };
+  ESP32HWConfig hwConfig;
   bool wifiIsConntected();
   void wifiDoSetup(String defaultName);
   bool updateNodeName();

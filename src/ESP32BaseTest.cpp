@@ -11,10 +11,13 @@
 #include <SHIMQTT.h>
 #include <SHIMulticastHandler.h>
 #ifdef HAS_DISPLAY
-#include <SHIOLEDDisplay.h>
+#include <SHISDS1306OLED.h>
 #endif
 #include <SHIRestCommunicator.h>
 #include <SHIVisitor.h>
+
+#include "SHIESP32HW.h"
+#include "SHIESP32HW_config.h"
 
 class DummySensor : public SHI::Sensor {
  public:
@@ -61,9 +64,10 @@ std::shared_ptr<SHI::MulticastHandler> multicastComms =
     std::make_shared<SHI::MulticastHandler>();
 std::shared_ptr<SHI::MQTT> mqtt = std::make_shared<SHI::MQTT>();
 #ifdef HAS_DISPLAY
-std::shared_ptr<SHI::OLEDDisplay> oled = std::make_shared<SHI::OLEDDisplay>(
-    std::pair<String, String>({"OutsideChannelDummyHumidity", "Feuchtigkeit"}),
-    std::pair<String, String>(
+std::shared_ptr<SHI::SDS1306OLED> oled = std::make_shared<SHI::SDS1306OLED>(
+    std::pair<std::string, String>(
+        {"OutsideChannelDummyHumidity", "Feuchtigkeit"}),
+    std::pair<std::string, String>(
         {"OutsideChannelDummyTemperature", "Temperatur"}));
 #endif
 
@@ -105,6 +109,14 @@ class PrintHierachyVisitor : public SHI::Visitor {
 };
 
 void setup() {
+  ets_printf("Starting\n");
+  StaticJsonDocument<100> doc;
+  deserializeJson(doc, "{}");
+  ets_printf("Parsed JSON\n");
+  SHI::ESP32HWConfig config(doc.as<JsonObject>());
+  ets_printf("Created config\n");
+  SHI::hw = new SHI::ESP32HW(config);
+  ets_printf("Constructed HW\n");
   SHI::hw->addCommunicator(mqtt);
   SHI::hw->addCommunicator(multicastComms);
 #ifdef HAS_DISPLAY

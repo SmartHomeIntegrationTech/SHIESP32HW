@@ -17,14 +17,7 @@
 #include <map>
 #include <vector>
 
-#ifndef BUILTIN_LED
-#warning "Did not define BUILTIN_LED"
-#define BUILTIN_LED -1
-#endif
-
 namespace {
-
-SHI::ESP32HW instance;
 
 #ifndef NO_SERIAL
 class HarwareSHIPrinter : public SHI::SHIPrinter {
@@ -49,19 +42,8 @@ PROGMEM const std::string RESET_SOURCE[] = {
     "RTCWDT_CPU_RESET", "EXT_CPU_RESET",    "RTCWDT_BROWN_OUT_RESET",
     "RTCWDT_RTC_RESET"};
 
-const char *ssid = "Elfenburg";
-const char *password = "fe-shnyed-olv-ek";
 const char *CONFIG = "wifiConfig";
 const uint32_t CONST_MARKER = 0xCAFEBABE;
-
-const int wdtTimeout = 15000;  // time in ms to trigger the watchdog
-
-const int CONNECT_TIMEOUT = 500;
-const int DATA_TIMEOUT = 1000;
-
-const char *ntpServer = "192.168.188.1";
-const long gmtOffset_sec = 3600;
-const int daylightOffset_sec = 3600;
 
 void IRAM_ATTR resetModule() {
   ets_printf("Watchdog bit, reboot\n");
@@ -70,15 +52,8 @@ void IRAM_ATTR resetModule() {
 }
 
 }  // namespace
-/*
-#undef SHI_LOGINFO
-#define SHI_LOGINFO(message) logInfo(name, __func__, message)
-#undef SHI_LOGWARN
-#define SHI_LOGWARN(message) logWarn(name, __func__, message)
-#undef SHI_LOGERROR
-#define SHI_LOGERROR(message) logError(name, __func__, message)
-*/
-SHI::Hardware *SHI::hw = &instance;
+
+SHI::Hardware *SHI::hw = nullptr;
 
 #ifndef VER_MAJ
 #error "Major version undefined"
@@ -99,12 +74,12 @@ const char *SHI::VERSION = internalVersion.c_str();
 
 void SHI::ESP32HW::errLeds(void) {
   // Set pin mode
-  if (BUILTIN_LED != -1) {
-    pinMode(BUILTIN_LED, OUTPUT);
+  if (hwConfig.ERR_LED != -1) {
+    pinMode(hwConfig.ERR_LED, OUTPUT);
     delay(500);
-    digitalWrite(BUILTIN_LED, HIGH);
+    digitalWrite(hwConfig.ERR_LED, HIGH);
     delay(500);
-    digitalWrite(BUILTIN_LED, LOW);
+    digitalWrite(hwConfig.ERR_LED, LOW);
   } else {
     delay(1000);
   }
@@ -122,9 +97,9 @@ void SHI::ESP32HW::loop() {
 }
 
 void SHI::ESP32HW::setupWatchdog() {
-  timer = timerBegin(0, 80, true);                   // timer 0, div 80
-  timerAttachInterrupt(timer, &resetModule, true);   // attach callback
-  timerAlarmWrite(timer, wdtTimeout * 1000, false);  // set time in us
+  timer = timerBegin(0, 80, true);                            // timer 0, div 80
+  timerAttachInterrupt(timer, &resetModule, true);            // attach callback
+  timerAlarmWrite(timer, hwConfig.wdtTimeout * 1000, false);  // set time in us
   timerAlarmEnable(timer);
 }
 
@@ -156,10 +131,10 @@ void SHI::ESP32HW::resetConfig() {
 
 void SHI::ESP32HW::printConfig() {
   SHI_LOGINFO("IP address:  " +
-              std::string(String(config.local_IP, 16).c_str()));
+              std::string(IPAddress(config.local_IP).toString().c_str()));
   SHI_LOGINFO("Subnet Mask: " + std::string(String(config.subnet, 16).c_str()));
   SHI_LOGINFO("Gateway IP:  " +
-              std::string(String(config.gateway, 16).c_str()));
+              std::string(IPAddress(config.gateway).toString().c_str()));
   SHI_LOGINFO("Canary:      " + std::string(String(config.canary, 16).c_str()));
   SHI_LOGINFO("Name:        " + std::string(config.name));
   SHI_LOGINFO("Reset reason:" + std::string(config.resetReason));
@@ -169,9 +144,9 @@ bool SHI::ESP32HW::updateNodeName() {
   HTTPClient http;
   String mac = WiFi.macAddress();
   mac.replace(':', '_');
-  http.begin("http://192.168.188.250/esp/" + mac);
-  http.setConnectTimeout(CONNECT_TIMEOUT);
-  http.setTimeout(DATA_TIMEOUT);
+  http.begin(String(hwConfig.baseURL.c_str()) + mac);
+  http.setConnectTimeout(hwConfig.CONNECT_TIMEOUT);
+  http.setTimeout(hwConfig.DATA_TIMEOUT);
   int httpCode = http.GET();
   if (httpCode == 200) {
     String newName = http.getString();
@@ -205,8 +180,8 @@ void SHI::ESP32HW::wifiConnected() {
 }
 
 void SHI::ESP32HW::setupWifiFromConfig(const std::string &defaultName) {
-  IPAddress primaryDNS(192, 168, 188, 250);  // optional
-  IPAddress secondaryDNS(192, 168, 188, 1);  // optional
+  IPAddress primaryDNS(hwConfig.primaryDNS);      // optional
+  IPAddress secondaryDNS(hwConfig.secondaryDNS);  // optional
   configPrefs.begin(CONFIG);
   configPrefs.getBytes(CONFIG, &config, sizeof(config_t));
   if (config.canary == CONST_MARKER) {
@@ -242,15 +217,15 @@ void SHI::ESP32HW::setupWifiFromConfig(const std::string &defaultName) {
   WiFi.onEvent(
       [this](WiFiEvent_t event, WiFiEventInfo_t info) { wifiConnected(); },
       SYSTEM_EVENT_STA_GOT_IP);
-  WiFi.begin(ssid, password);
+  WiFi.begin(hwConfig.ssid.c_str(), hwConfig.password.c_str());
 }
 
 void SHI::ESP32HW::initialWifiConnect() {
   while (WiFi.status() != WL_CONNECTED) {
-    if (connectCount > 10) {
+    if (connectCount > hwConfig.reconnectAttempts) {
       ESP.restart();
     }
-    delay(500);
+    delay(hwConfig.reconnectDelay);
     SHI_LOGINFO(".");
     connectCount++;
   }
@@ -278,10 +253,10 @@ void SHI::ESP32HW::setup(const std::string &defaultName) {
   setupWatchdog();
   feedWatchdog();
   debugSerial = &shiSerial;
-  debugSerial->begin(115200);
+  debugSerial->begin(hwConfig.baudRate);
 
   setupWifiFromConfig(defaultName);
-  SHI_LOGINFO("Connecting to " + std::string(ssid));
+  SHI_LOGINFO("Connecting to " + hwConfig.ssid);
 
   uint32_t intialWifiConnectStart = millis();
   initialWifiConnect();
@@ -291,7 +266,8 @@ void SHI::ESP32HW::setup(const std::string &defaultName) {
       std::string("STARTED: ") + RESET_SOURCE[rtc_get_reset_reason(0)] + ":" +
       RESET_SOURCE[rtc_get_reset_reason(1)] + " " + config.resetReason;
   feedWatchdog();
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  configTime(hwConfig.gmtOffset_sec, hwConfig.daylightOffset_sec,
+             hwConfig.ntpServer.c_str());
   feedWatchdog();
   uint32_t sensorSetupStart = millis();
   setupSensors();
@@ -322,7 +298,7 @@ bool SHI::ESP32HW::wifiIsConntected() {
     WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
     WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, password);
+    WiFi.begin(hwConfig.ssid.c_str(), hwConfig.password.c_str());
     retryCount++;
     delay(retryCount * 1000);
   }
