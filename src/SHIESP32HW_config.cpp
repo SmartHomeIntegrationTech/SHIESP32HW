@@ -6,7 +6,7 @@
 
 // WARNING, this is an automatically generated file!
 // Don't change anything in here.
-// Last update 2020-03-01
+// Last update 2020-03-06
 
 # include <iostream>
 # include <string>
@@ -40,7 +40,7 @@ SHI::ESP32HWConfig::ESP32HWConfig(const JsonObject &obj):
       debugLevel(obj["debugLevel"] | 0)
   {}
 
-void SHI::ESP32HWConfig::fillData(JsonDocument &doc) {
+void SHI::ESP32HWConfig::fillData(JsonObject &doc) {
     doc["ssid"] = ssid;
   doc["password"] = password;
   doc["local_IP"] = local_IP;
@@ -65,19 +65,7 @@ void SHI::ESP32HWConfig::fillData(JsonDocument &doc) {
   doc["debugLevel"] = debugLevel;
 }
 
-namespace {
-  const size_t ESP32HWConfigCapacity = JSON_OBJECT_SIZE(22);
+int SHI::ESP32HWConfig::getExpectedCapacity() {
+  return JSON_OBJECT_SIZE(22);
 }
 
-std::string SHI::ESP32HWConfig::toJson() {
-  DynamicJsonDocument doc(ESP32HWConfigCapacity);
-  fillData(doc);
-  char output[2000];
-  serializeJson(doc, output, sizeof(output));
-  return std::string(output);
-}
-void SHI::ESP32HWConfig::printJson(std::ostream printer) {
-  DynamicJsonDocument doc(ESP32HWConfigCapacity);
-  fillData(doc);
-  serializeJson(doc, printer);
-}

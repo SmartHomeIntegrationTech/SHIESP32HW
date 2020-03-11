@@ -32,10 +32,8 @@ namespace SHI {
 class ESP32HWConfig : public Configuration {
  public:
   explicit ESP32HWConfig(const JsonObject &obj);
-  std::string toJson() override;
-  void printJson(std::ostream printer) override;
-  void fillData(
-      JsonDocument &doc) override;  // NOLINT Yes, non constant reference
+  int getExpectedCapacity() override;
+  void fillData(JsonObject &doc) override;
   const std::string ssid = "Elfenburg";
   const std::string password = "fe-shnyed-olv-ek";
 
@@ -74,7 +72,10 @@ class SHIPrinter : public Print {
 class ESP32HW : public Hardware {
  public:
   explicit ESP32HW(const ESP32HWConfig &config)
-      : Hardware("ESP32"), hwConfig(config) {}
+      : Hardware("ESP32"), hwConfig(config) {
+    debugSerial = &shiSerial;
+    debugSerial->begin(config.baudRate);
+  }
   std::string getNodeName() override;
   const std::string getName() const override;
 

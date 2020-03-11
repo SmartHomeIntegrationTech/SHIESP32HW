@@ -254,8 +254,6 @@ void SHI::ESP32HW::storeWifiConfig() {
 void SHI::ESP32HW::setup(const std::string &defaultName) {
   setupWatchdog();
   feedWatchdog();
-  debugSerial = &shiSerial;
-  debugSerial->begin(hwConfig.baudRate);
 
   setupWifiFromConfig(defaultName);
   SHI_LOGINFO("Connecting to " + hwConfig.ssid);
@@ -295,7 +293,8 @@ bool SHI::ESP32HW::wifiIsConntected() {
   while (WiFi.status() != WL_CONNECTED) {
     feedWatchdog();
     if (retryCount > 6) {
-      resetWithReason("Retry count for Wifi exceeded" + WiFi.status());
+      resetWithReason(std::string("Retry count for Wifi exceeded") +
+                      std::string(String(WiFi.status()).c_str()));
     }
     WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
