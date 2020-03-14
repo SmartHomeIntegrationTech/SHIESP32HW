@@ -31,36 +31,37 @@ namespace SHI {
 
 class ESP32HWConfig : public Configuration {
  public:
+  ESP32HWConfig() {}
   explicit ESP32HWConfig(const JsonObject &obj);
-  int getExpectedCapacity() override;
-  void fillData(JsonObject &doc) override;
-  const std::string ssid = "Elfenburg";
-  const std::string password = "fe-shnyed-olv-ek";
+  int getExpectedCapacity() const override;
+  void fillData(JsonObject &doc) const override;
+  std::string ssid = "Elfenburg";
+  std::string password = "fe-shnyed-olv-ek";
 
   std::string local_IP = "";
   std::string subnet = "255.255.255.0";
-  const std::string gateway = "192.168.188.1";  // 0xC0A8BC01;
-  const std::string primaryDNS = "192.168.188.1";
-  const std::string secondaryDNS = "192.168.188.1";
-  const std::string ntp = "192.168.188.1";
-  const std::string name = "Testing";
-  const std::string baseURL = "http://192.168.188.250/esp/";
+  std::string gateway = "192.168.188.1";  // 0xC0A8BC01;
+  std::string primaryDNS = "192.168.188.1";
+  std::string secondaryDNS = "192.168.188.1";
+  std::string ntp = "192.168.188.1";
+  std::string name = "Testing";
+  std::string baseURL = "http://192.168.188.250/esp/";
 
-  const int reconnectDelay = 500;
-  const int reconnectAttempts = 10;
+  int reconnectDelay = 500;
+  int reconnectAttempts = 10;
 
-  const int wdtTimeout = 15000;  // time in ms to trigger the watchdog
-  const int CONNECT_TIMEOUT = 500;
-  const int DATA_TIMEOUT = 1000;
+  int wdtTimeout = 15000;  // time in ms to trigger the watchdog
+  int CONNECT_TIMEOUT = 500;
+  int DATA_TIMEOUT = 1000;
 
-  const std::string ntpServer = "192.168.188.1";
-  const int gmtOffset_sec = 3600;
-  const int daylightOffset_sec = 3600;
-  const int ERR_LED = BUILTIN_LED;
+  std::string ntpServer = "192.168.188.1";
+  int gmtOffset_sec = 3600;
+  int daylightOffset_sec = 3600;
+  int ERR_LED = BUILTIN_LED;
 
-  const int baudRate = 115200;
-  const bool disableUART = false;
-  const int debugLevel = 0;
+  int baudRate = 115200;
+  bool noSerialLogging = false;
+  int debugLevel = 0;
 };
 
 class SHIPrinter : public Print {
@@ -69,12 +70,27 @@ class SHIPrinter : public Print {
   virtual size_t write(uint8_t data) = 0;
 };
 
+class HardwareSHIPrinter : public SHI::SHIPrinter {
+  void begin(int baudRate) { Serial.begin(baudRate); }
+  size_t write(uint8_t data) { return Serial.write(data); }
+};
+
+class NullSHIPrinter : public SHI::SHIPrinter {
+ public:
+  size_t write(uint8_t) { return 1; }
+  void begin(int baudRate) {}
+};
+
 class ESP32HW : public Hardware {
  public:
   explicit ESP32HW(const ESP32HWConfig &config)
       : Hardware("ESP32"), hwConfig(config) {
-    debugSerial = &shiSerial;
-    debugSerial->begin(config.baudRate);
+    if (config.noSerialLogging) {
+      debugSerial = new NullSHIPrinter();
+    } else {
+      debugSerial = new HardwareSHIPrinter();
+      debugSerial->begin(config.baudRate);
+    }
   }
   std::string getNodeName() override;
   const std::string getName() const override;
@@ -97,8 +113,11 @@ class ESP32HW : public Hardware {
 
   std::vector<std::pair<std::string, std::string>> getStatistics() override;
 
-  Configuration *getConfig() override { return &hwConfig; }
-
+  const Configuration *getConfig() const override { return &hwConfig; }
+  bool reconfigure(Configuration *newConfig) override {
+    hwConfig = castConfig<ESP32HWConfig>(newConfig);
+    return true;
+  }
   void logInfo(const std::string &name, const char *func,
                const String &message) {
     if (hwConfig.debugLevel <= 0)

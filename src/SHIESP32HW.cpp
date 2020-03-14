@@ -19,21 +19,6 @@
 
 namespace {
 
-#ifndef NO_SERIAL
-class HarwareSHIPrinter : public SHI::SHIPrinter {
-  void begin(int baudRate) { Serial.begin(baudRate); }
-  size_t write(uint8_t data) { return Serial.write(data); }
-};
-HarwareSHIPrinter shiSerial;
-#else
-class NullSHIPrinter : public SHI::SHIPrinter {
- public:
-  size_t write(uint8_t) { return 1; }
-  void begin(int baudRate) {}
-};
-NullSHIPrinter shiSerial;
-#endif
-
 PROGMEM const std::string RESET_SOURCE[] = {
     "NO_MEAN",          "POWERON_RESET",    "SW_RESET",
     "OWDT_RESET",       "DEEPSLEEP_RESET",  "SDIO_RESET",

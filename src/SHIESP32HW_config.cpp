@@ -6,13 +6,13 @@
 
 // WARNING, this is an automatically generated file!
 // Don't change anything in here.
-// Last update 2020-03-06
+// Last update 2020-03-12
 
 # include <iostream>
 # include <string>
 
 
-#include "SHIESP32HW.h"
+# include "SHIESP32HW.h"
 // Configuration implementation for class SHI::ESP32HWConfig
 
 SHI::ESP32HWConfig::ESP32HWConfig(const JsonObject &obj):
@@ -36,11 +36,11 @@ SHI::ESP32HWConfig::ESP32HWConfig(const JsonObject &obj):
       daylightOffset_sec(obj["daylightOffset_sec"] | 3600),
       ERR_LED(obj["ERR_LED"] | BUILTIN_LED),
       baudRate(obj["baudRate"] | 115200),
-      disableUART(obj["disableUART"] | false),
+      noSerialLogging(obj["noSerialLogging"] | false),
       debugLevel(obj["debugLevel"] | 0)
   {}
 
-void SHI::ESP32HWConfig::fillData(JsonObject &doc) {
+void SHI::ESP32HWConfig::fillData(JsonObject &doc) const {
     doc["ssid"] = ssid;
   doc["password"] = password;
   doc["local_IP"] = local_IP;
@@ -61,11 +61,11 @@ void SHI::ESP32HWConfig::fillData(JsonObject &doc) {
   doc["daylightOffset_sec"] = daylightOffset_sec;
   doc["ERR_LED"] = ERR_LED;
   doc["baudRate"] = baudRate;
-  doc["disableUART"] = disableUART;
+  doc["noSerialLogging"] = noSerialLogging;
   doc["debugLevel"] = debugLevel;
 }
 
-int SHI::ESP32HWConfig::getExpectedCapacity() {
+int SHI::ESP32HWConfig::getExpectedCapacity() const {
   return JSON_OBJECT_SIZE(22);
 }
 
