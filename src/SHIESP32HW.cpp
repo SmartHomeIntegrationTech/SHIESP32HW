@@ -19,7 +19,7 @@
 
 namespace {
 
-PROGMEM const std::string RESET_SOURCE[] = {
+const char *RESET_SOURCE[] = {
     "NO_MEAN",          "POWERON_RESET",    "SW_RESET",
     "OWDT_RESET",       "DEEPSLEEP_RESET",  "SDIO_RESET",
     "TG0WDT_SYS_RESET", "TG1WDT_SYS_RESET", "RTCWDT_SYS_RESET",
@@ -278,11 +278,12 @@ bool SHI::ESP32HW::wifiIsConntected() {
   while (WiFi.status() != WL_CONNECTED) {
     feedWatchdog();
     if (retryCount > 6) {
-      resetWithReason(std::string("Retry count for Wifi exceeded") +
+      resetWithReason(std::string("Retry count for Wifi exceeded ") +
                       std::string(String(WiFi.status()).c_str()));
     }
     WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
+    delay(100);
     WiFi.mode(WIFI_STA);
     WiFi.begin(hwConfig.ssid.c_str(), hwConfig.password.c_str());
     retryCount++;
