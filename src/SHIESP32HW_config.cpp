@@ -6,7 +6,7 @@
 
 // WARNING, this is an automatically generated file!
 // Don't change anything in here.
-// Last update 2020-03-15
+// Last update 2020-03-25
 
 # include <iostream>
 # include <string>
@@ -15,8 +15,12 @@
 # include "SHIESP32HW.h"
 // Configuration implementation for class SHI::ESP32HWConfig
 
+namespace {
+    
+}  // namespace
+
 SHI::ESP32HWConfig::ESP32HWConfig(const JsonObject &obj):
-       ssid(obj["ssid"] | "Elfenburg"),
+      ssid(obj["ssid"] | "Elfenburg"),
       password(obj["password"] | "fe-shnyed-olv-ek"),
       local_IP(obj["local_IP"] | ""),
       subnet(obj["subnet"] | "255.255.255.0"),
